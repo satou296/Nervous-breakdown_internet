@@ -1,0 +1,12 @@
+# Docker イメージに入れないもの
+.git
+.github
+node_modules
+npm-debug.log
+tests
+*.zip
+*.md
+.DS_Store
+Dockerfile
+docker-compose.yml
+render.yaml

@@ -1,0 +1,13 @@
+/* ページ全体と3Dステージ */
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: var(--night); color: var(--ink); font-family: var(--ui); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+
+#loading {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); letter-spacing: .2em; font-size: .85rem;
+}

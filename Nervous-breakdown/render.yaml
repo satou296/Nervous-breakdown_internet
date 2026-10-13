@@ -1,0 +1,25 @@
+# Render の Blueprint（設計図）。リポジトリにこのファイルがあれば、
+# Render の画面で「New → Blueprint」を選ぶだけで、下の設定のサービスが作られる。
+services:
+  - type: web
+    name: floating-concentration
+    runtime: docker
+    # 無料プラン。15分間アクセスがないと停止し、次のアクセスで約1分の起動待ちになる。
+    # 外部の監視サービスで /health を10分ごとに開けば、停止させずに済む
+    # （手順は docs/DEPLOY_RENDER.md の「6. いつでも開ける状態にする」）。
+    # 安定運用したくなったら starter に変える（有料・常に起動）。
+    plan: free
+    region: singapore          # 日本から近い地域
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true           # main ブランチに push すると自動で反映
+    # 部屋の情報はサーバーのメモリにあるので、台数は1台で動かす
+    numInstances: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TURN_TIMEOUT_SEC
+        value: "45"
+      # 独自ドメインを使う場合などに、接続を許すサイトを指定できる（カンマ区切り）
+      # - key: ALLOWED_ORIGINS
+      #   value: https://example.com

@@ -1,0 +1,16 @@
+/* デザイントークン：色・書体はすべてここで定義する（単一のダークテーマ） */
+:root {
+  --night: #0e0a08;
+  --panel: rgba(22, 15, 11, .78);
+  --ink: #f3ead8;
+  --ink-soft: #d6ccb6;
+  --muted: #b7a68a;
+  --brass: #d8b46a;
+  --brass-line: rgba(216, 180, 106, .28);
+  --felt-top: rgba(29, 90, 64, .92);
+  --felt-bottom: rgba(17, 52, 37, .95);
+  --on-brass: #1f1608;
+  --display: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --ui: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+  color-scheme: dark;
+}
