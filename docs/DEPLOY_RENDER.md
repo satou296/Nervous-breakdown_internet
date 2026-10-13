@@ -41,14 +41,14 @@ GitHub や Render の画面のボタン名は、変更されて少し違うこ�
 
 ### 1-2. ゲームサーバーを起動する
 
-1. `Nervous-breakdown.zip` を展開します（例：デスクトップに `Nervous-breakdown` フォルダができる）。
+1. `Nervous-breakdown_internet.zip` を展開します（例：デスクトップに `Nervous-breakdown_internet` フォルダができる）。
 2. ターミナル（PowerShell）で、そのフォルダに移動します。
 
    ```
-   cd ~/Desktop/Nervous-breakdown
+   cd ~/Desktop/Nervous-breakdown_internet
    ```
 
-   Windows の例：`cd $HOME\Desktop\Nervous-breakdown`
+   Windows の例：`cd $HOME\Desktop\Nervous-breakdown_internet`
 3. 必要な部品を入れます（初回だけ。1分ほどかかります）。
 
    ```
@@ -83,7 +83,7 @@ GitHub の画面だけで作業する方法です。
 
 ### 2-1. 古いファイルを整理する
 
-https://github.com/satou296/Nervous-breakdown を開き、次のファイルが残っていれば削除します。
+https://github.com/satou296/Nervous-breakdown_internet を開き、次のファイルが残っていれば削除します。
 （ファイルを開く → 右上の「…」→ **Delete file** → **Commit changes**）
 
 - `src/app/GameSession.js`（`src/app/session/` に移動したため不要）
@@ -94,7 +94,7 @@ https://github.com/satou296/Nervous-breakdown を開き、次のファイルが�
 
 ### 2-2. 新しいファイルをアップロードする
 
-1. `Nervous-breakdown.zip` を展開します。
+1. `Nervous-breakdown_internet.zip` を展開します。
 2. リポジトリのトップ画面で **Add file → Upload files** を押します。
 3. 展開したフォルダの **中身すべて** をドラッグします（フォルダそのものではなく、中身）。
    - Mac の Finder では、`.github` や `.dockerignore` のように「.」で始まるファイルが隠れています。Finder で **Cmd + Shift + .（ピリオド）** を押すと表示されるので、それも一緒にドラッグしてください。
@@ -112,7 +112,7 @@ index.html  package.json  README.md  render.yaml
 ```
 
 - `node_modules` フォルダは **アップロードしません**（あれば削除してください）。
-- `Nervous-breakdown/` のようなフォルダが一段はさまっていたら、置き方が間違っています（以前と同じ原因）。
+- `Nervous-breakdown_internet/` のようなフォルダが一段はさまっていたら、置き方が間違っています（以前と同じ原因）。
 
 > Git を使える場合は、`git add -A && git commit -m "オンライン対戦に対応" && git push` でも同じです。
 
@@ -146,11 +146,11 @@ index.html  package.json  README.md  render.yaml
 1. Render の画面右上の **New +** → **Blueprint** を選びます。
 2. 「Connect a repository」で **Configure account**（または Connect GitHub）を押します。
 3. GitHub の画面で、Render に見せるリポジトリを選びます。
-   - **Only select repositories** を選び、`Nervous-breakdown` だけを選ぶのが安全です。
+   - **Only select repositories** を選び、`Nervous-breakdown_internet` だけを選ぶのが安全です。
    - **Install**（または Save）を押します。
-4. Render に戻り、`satou296/Nervous-breakdown` の **Connect** を押します。
-5. 「Blueprint Name」に好きな名前（例：`nervous-breakdown`）を入れます。
-6. 下に `floating-concentration`（Web Service）が表示され、プランが **Free** になっていることを確認し、**Apply**（または Deploy Blueprint）を押します。
+4. Render に戻り、`satou296/Nervous-breakdown_internet` の **Connect** を押します。
+5. 「Blueprint Name」に好きな名前（例：`nervous-breakdown-internet`）を入れます。
+6. 下に `nervous-breakdown-internet`（Web Service）が表示され、プランが **Free** になっていることを確認し、**Apply**（または Deploy Blueprint）を押します。
 7. もし支払い方法の登録を求められた場合は、`render.yaml` が `plan: free` になっているか（古いファイルのままでないか）を GitHub で確認してください。
 8. サービス名をクリックすると **Logs** に作業の様子が流れます。5分ほどで次のように表示されれば起動完了です。
 
@@ -159,7 +159,7 @@ index.html  package.json  README.md  render.yaml
    ```
 
    （ここに表示される localhost は Render の中の話なので気にしなくて大丈夫です）
-9. 画面上部に `https://floating-concentration-xxxx.onrender.com` のような **公開 URL** が表示されます。これがゲームの URL です。
+9. 画面上部に `https://nervous-breakdown-internet-xxxx.onrender.com` のような **公開 URL** が表示されます。これがゲームの URL です。
 
 ### 5-2. Blueprint を使わない場合（手動で設定）
 
@@ -167,7 +167,7 @@ index.html  package.json  README.md  render.yaml
 
 | 項目 | 入力する値 |
 |---|---|
-| Name | `floating-concentration`（好きな名前でよい） |
+| Name | `nervous-breakdown-internet`（好きな名前でよい） |
 | Language / Runtime | **Docker** |
 | Branch | `main` |
 | Region | **Singapore**（日本から近い） |
@@ -199,7 +199,7 @@ index.html  package.json  README.md  render.yaml
    |---|---|
    | Monitor Type | **HTTP(s)** |
    | Friendly Name | `神経衰弱`（好きな名前でよい） |
-   | URL (or IP) | `https://（手順5で表示された公開URL）/health`<br>例：`https://floating-concentration-xxxx.onrender.com/health` |
+   | URL (or IP) | `https://（手順5で表示された公開URL）/health`<br>例：`https://nervous-breakdown-internet-xxxx.onrender.com/health` |
    | Monitoring Interval | **10 minutes**（5〜14分ならどれでも可） |
 
 3. **Create Monitor**（または Save）を押します。
@@ -224,7 +224,7 @@ index.html  package.json  README.md  render.yaml
 ## 7. 公開された URL で動作を確かめる
 
 1. 公開 URL の末尾に `/health` を付けて開きます。
-   例：`https://floating-concentration-xxxx.onrender.com/health`
+   例：`https://nervous-breakdown-internet-xxxx.onrender.com/health`
    → `{"status":"ok","rooms":0}` と表示されれば、サーバーは正常です。
 2. 公開 URL を開き、「あそびかた」で **オンライン** を選んで「ゲーム開始」。
 3. 名前を入れて **部屋を作る** → 招待URL が表示されます。**コピー** を押して友だちに送ります。
@@ -232,7 +232,7 @@ index.html  package.json  README.md  render.yaml
 5. 部屋を作った人が **対戦を始める** を押せば対戦開始です。
 6. 1人用（ひとり・CPU・2人交代）も、これまでどおり同じ URL で遊べます。
 
-> GitHub Pages の URL（`https://satou296.github.io/Nervous-breakdown/`）は、サーバーがない場所なので **オンラインは選べません**（1人用はこれまでどおり遊べます）。オンライン対戦は必ず Render の URL で開いてください。
+> GitHub Pages の URL（`https://satou296.github.io/Nervous-breakdown_internet/`）は、サーバーがない場所なので **オンラインは選べません**（1人用はこれまでどおり遊べます）。オンライン対戦は必ず Render の URL で開いてください。
 
 ---
 

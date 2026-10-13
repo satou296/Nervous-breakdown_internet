@@ -2,7 +2,7 @@
 # Render の画面で「New → Blueprint」を選ぶだけで、下の設定のサービスが作られる。
 services:
   - type: web
-    name: floating-concentration
+    name: nervous-breakdown-internet
     runtime: docker
     # 無料プラン。15分間アクセスがないと停止し、次のアクセスで約1分の起動待ちになる。
     # 外部の監視サービスで /health を10分ごとに開けば、停止させずに済む

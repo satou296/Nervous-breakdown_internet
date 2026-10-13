@@ -9,7 +9,7 @@
 Node.js 20 以上が必要です。サーバーがゲーム画面の配信と対戦の両方を受け持ちます。
 
 ```bash
-cd floating-concentration
+cd Nervous-breakdown_internet
 npm install
 npm start          # → http://localhost:8080
 ```
