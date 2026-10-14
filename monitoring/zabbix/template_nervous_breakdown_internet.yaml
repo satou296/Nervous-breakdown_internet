@@ -1,0 +1,210 @@
+# Zabbix に取り込むテンプレート（Data collection → Templates → Import）。
+# /api/stats を1分ごとに読み、数値ごとの項目と、異常を知らせる条件を作る。
+# 合言葉は取り込んだあと、ホストのマクロ {$GAME_STATS_TOKEN} に入れる（docs/MONITORING_DOCKER.md）。
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: 42193c60e9504b9a98aac6917e5a3696
+      template: 'Nervous breakdown internet'
+      name: 'Nervous breakdown internet'
+      description: '浮遊トランプ神経衰弱のゲームサーバー（Render）を /api/stats で監視する'
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: e35b1fe232994f5b9f583ab7248430ce
+          name: 'Game stats (raw)'
+          type: HTTP_AGENT
+          key: game.stats.raw
+          delay: 1m
+          history: 1d
+          value_type: TEXT
+          trends: '0'
+          timeout: 15s
+          url: '{$GAME_URL}/api/stats'
+          headers:
+            - name: Authorization
+              value: 'Bearer {$GAME_STATS_TOKEN}'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: cfc136c71a7c41ec9b77748d4b8fd19e
+          name: 'Connections'
+          type: DEPENDENT
+          key: game.connections
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.connections
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+          triggers:
+            - uuid: 03495c57db464686a1fb54358d7f11bd
+              expression: 'nodata(/Nervous breakdown internet/game.connections,5m)=1'
+              name: 'ゲームサーバーから応答がない'
+              priority: HIGH
+        - uuid: 77b20e623f7d44d881e6c537b3116fcb
+          name: 'Rooms'
+          type: DEPENDENT
+          key: game.rooms
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.rooms
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: 08eb0e31d0a8495b897dc7d8932a081b
+          name: 'Rooms playing'
+          type: DEPENDENT
+          key: game.rooms.playing
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.roomsPlaying
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: b234b3bcc69742049293ce83731f4843
+          name: 'Players'
+          type: DEPENDENT
+          key: game.players
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.players
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: 138473d6dc0a411fa072c9889bd20e69
+          name: 'Uptime'
+          type: DEPENDENT
+          key: game.uptime
+          delay: '0'
+          units: uptime
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.uptimeSec
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+          triggers:
+            - uuid: 5970ce3218cc4938a31ac81c12409e61
+              expression: 'last(/Nervous breakdown internet/game.uptime)<180'
+              name: 'ゲームサーバーが再起動した'
+              priority: INFO
+        - uuid: 6a5061955f8741a0a4980da85abbdd8f
+          name: 'Memory'
+          type: DEPENDENT
+          key: game.memory
+          delay: '0'
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.memoryRssBytes
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: 8103a6f777de4a40ba385726b95c8def
+          name: 'Errors total'
+          type: DEPENDENT
+          key: game.errors.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.errorsTotal
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+          triggers:
+            - uuid: dcffde4b9a274de8817693b1843a544c
+              expression: 'change(/Nervous breakdown internet/game.errors.total)>0'
+              name: 'ゲームサーバーでエラーが起きた'
+              priority: WARNING
+        - uuid: e3a6288fac394649a990f21cfc0c03f4
+          name: 'Connections total'
+          type: DEPENDENT
+          key: game.connections.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.connectionsTotal
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: 876d59aa72a547c5bc76b8e6276fba93
+          name: 'Rooms created total'
+          type: DEPENDENT
+          key: game.rooms.created.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.roomsCreatedTotal
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: c8deb09bce554ce9ba2267cf4bb9fc25
+          name: 'Matches started total'
+          type: DEPENDENT
+          key: game.matches.started.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.matchesStartedTotal
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: fcbc9c466eb34df2b566c3fa94339483
+          name: 'Matches finished total'
+          type: DEPENDENT
+          key: game.matches.finished.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.matchesFinishedTotal
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+      macros:
+        - macro: '{$GAME_STATS_TOKEN}'
+          type: SECRET_TEXT
+          description: 'Render の環境変数 STATS_TOKEN と同じ値'
+        - macro: '{$GAME_URL}'
+          value: 'https://nervous-breakdown-internet.onrender.com'
+          description: 'ゲームサーバーの公開 URL（末尾に / を付けない）'

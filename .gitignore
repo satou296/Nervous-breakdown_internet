@@ -1,2 +1,4 @@
 node_modules/
 .DS_Store
+# 監視用コンテナの設定（合言葉が入る）
+monitoring/.env

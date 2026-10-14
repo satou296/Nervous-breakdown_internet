@@ -35,7 +35,7 @@ export class MessageDispatcher {
       }
     } catch (err) {
       if (err instanceof RoomError) return connection.sendError(err.code, err.message);
-      this.logger.error('[dispatch]', err);
+      this.logger.error('dispatch_error', err);
       return connection.sendError(ErrorCode.InvalidMessage, 'サーバーでエラーが起きました');
     }
   }

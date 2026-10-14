@@ -37,7 +37,7 @@ python3 -m http.server 8000      # → http://localhost:8000
 npm test        # ルール・物理・サーバー（実際に起動して2人で通信）まで、ブラウザ不要
 ```
 
-本番への公開手順は [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md) を見てください。
+本番への公開手順は [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md)、本番の監視（Zabbix・Loki・Grafana）は [docs/MONITORING.md](docs/MONITORING.md)、監視を自分のパソコンの Docker で動かす手順は [docs/MONITORING_DOCKER.md](docs/MONITORING_DOCKER.md) を見てください。
 
 ## 層構成と依存の向き
 
@@ -80,7 +80,8 @@ main.js（組み立てのみ）
 | `src/render/player/` | `RemotePlayers` | 他の人の狙い（線と名札） |
 | `src/ui/` | `LobbyScreen` | 名前入力・待合室の画面 |
 | `server/` | `index.js` | サーバーの組み立て（HTTP と WebSocket） |
-| `server/http/` | `HttpRouter`, `StaticFileServer` | /health・招待URLの転送・画面ファイルの配信 |
+| `server/http/` | `HttpRouter`, `StaticFileServer` | /health・/api/stats・招待URLの転送・画面ファイルの配信 |
+| `server/monitoring/` | `Logger`, `ConsoleSink`, `LokiSink`, `ServerMetrics` | 記録（1行＝1つの JSON。標準出力と Loki へ）と、監視用の数値 |
 | `server/net/` | `ClientConnection`, `MessageDispatcher`, `MessageValidator`, `RateLimiter`, `OriginPolicy` | 接続・振り分け・検証・回数制限・接続元の確認 |
 | `server/rooms/` | `RoomManager`, `Room`, `Seat`, `RoomCodeGenerator` | 部屋の一覧・部屋・席・部屋番号 |
 | `server/match/` | `OnlineMatch`, `TimerScheduler` | 1試合の判定と時間進行（持ち時間・切断時の自動パス） |

@@ -31,6 +31,7 @@ export class Room {
 
   get state() { return this.#state; }
   get isVacant() { return this.#seats.every(s => !s.connected); }
+  get connectedCount() { return this.#seats.filter(s => s.connected).length; }
 
   /* ---------------- 出入り ---------------- */
 

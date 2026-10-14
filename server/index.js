@@ -14,8 +14,11 @@ import { ClientConnection } from './net/ClientConnection.js';
 import { MessageDispatcher } from './net/MessageDispatcher.js';
 import { RoomManager } from './rooms/RoomManager.js';
 import { RoomCodeGenerator } from './rooms/RoomCodeGenerator.js';
-import { OnlineMatch } from './match/OnlineMatch.js';
+import { OnlineMatch, MatchEvent } from './match/OnlineMatch.js';
 import { TimerScheduler } from './match/TimerScheduler.js';
+import { Logger, ConsoleSink } from './monitoring/Logger.js';
+import { LokiSink } from './monitoring/LokiSink.js';
+import { ServerMetrics, Counter } from './monitoring/ServerMetrics.js';
 
 import { SOCKET_PATH, LIMITS } from '../src/net/Protocol.js';
 import { DeckFactory } from '../src/domain/DeckFactory.js';
@@ -23,32 +26,64 @@ import { FisherYatesShuffler } from '../src/domain/Shuffler.js';
 import { SameRankRule } from '../src/domain/MatchRule.js';
 import { DECK_OPTIONS, TIMING } from '../src/config/GameConfig.js';
 
+/** 記録の行き先を設定から組み立てる（標準出力は常に。Loki は送り先が設定されているときだけ） */
+function createLogger(config) {
+  const sinks = [new ConsoleSink()];
+  if (config.loki.url) sinks.push(new LokiSink(config.loki));
+  return new Logger({ sinks, level: config.logLevel });
+}
+
 export function createGameServer(config = loadServerConfig()) {
   const deckFactory = new DeckFactory(new FisherYatesShuffler());
   const matchRule = new SameRankRule();
+
+  /* ---- 監視（記録と数値）。connections と rooms は下で作るので、関数で遅延参照する ---- */
+  const connections = new Set();
+  const logger = createLogger(config);
+  const metrics = new ServerMetrics({
+    gauges: () => ({ connections: connections.size, ...rooms.stats() }),
+    errorCount: () => logger.errorCount
+  });
 
   const rooms = new RoomManager({
     codeGenerator: new RoomCodeGenerator(),
     maxRooms: config.maxRooms,
     emptyRoomTtlMs: config.emptyRoomTtlMs,
-    createMatch: (playerNames, settings) => new OnlineMatch({
-      playerNames,
-      difficultyId: settings.difficultyId,
-      deckSize: settings.deckSize,
-      deckFactory, deckOptions: DECK_OPTIONS, matchRule, timing: TIMING,
-      scheduler: new TimerScheduler(),
-      turnTimeoutMs: config.turnTimeoutMs,
-      disconnectGraceMs: config.disconnectGraceMs
-    })
+    onRoomOpened: room => {
+      metrics.count(Counter.RoomsCreated);
+      logger.info('room_created', { ...room.settings, rooms: rooms.size });
+    },
+    onRoomClosed: () => logger.info('room_closed', { rooms: rooms.size }),
+    createMatch: (playerNames, settings) => {
+      const match = new OnlineMatch({
+        playerNames,
+        difficultyId: settings.difficultyId,
+        deckSize: settings.deckSize,
+        deckFactory, deckOptions: DECK_OPTIONS, matchRule, timing: TIMING,
+        scheduler: new TimerScheduler(),
+        turnTimeoutMs: config.turnTimeoutMs,
+        disconnectGraceMs: config.disconnectGraceMs
+      });
+      const startedAt = Date.now();
+      metrics.count(Counter.MatchesStarted);
+      logger.info('match_started', { ...settings, playerCount: playerNames.length });
+      match.on(MatchEvent.Finished, () => {
+        metrics.count(Counter.MatchesFinished);
+        logger.info('match_finished', { ...settings, playerCount: playerNames.length, durationSec: Math.round((Date.now() - startedAt) / 1000) });
+      });
+      return match;
+    }
   });
 
   const router = new HttpRouter({
     staticFiles: new StaticFileServer({ root: config.publicRoot, publicEntries: ['index.html', 'css', 'src'] }),
-    roomStats: () => ({ rooms: rooms.size })
+    roomStats: () => ({ rooms: rooms.size }),
+    stats: () => metrics.snapshot(),
+    statsToken: config.statsToken
   });
   const httpServer = http.createServer((req, res) => {
     router.handle(req, res).catch(err => {
-      console.error('[http]', err);
+      logger.error('http_error', err);
       if (!res.headersSent) res.writeHead(500);
       res.end();
     });
@@ -61,12 +96,16 @@ export function createGameServer(config = loadServerConfig()) {
     maxPayload: LIMITS.maxMessageBytes,
     verifyClient: ({ origin, req }) => originPolicy.isAllowed(origin, req.headers.host)
   });
-  const dispatcher = new MessageDispatcher({ rooms });
-  const connections = new Set();
+  const dispatcher = new MessageDispatcher({ rooms, logger });
   wss.on('connection', socket => {
     const connection = new ClientConnection(socket, { rateLimit: config.rateLimit });
     connections.add(connection);
-    connection.on('closed', () => connections.delete(connection));
+    metrics.count(Counter.Connections);
+    logger.info('ws_connected', { connections: connections.size });
+    connection.on('closed', () => {
+      connections.delete(connection);
+      logger.info('ws_closed', { connections: connections.size });
+    });
     dispatcher.attach(connection);
   });
 
@@ -75,14 +114,19 @@ export function createGameServer(config = loadServerConfig()) {
 
   return {
     httpServer,
-    listen: () => new Promise(resolve => httpServer.listen(config.port, config.host, resolve)),
-    close: () => new Promise(resolve => {
+    listen: () => new Promise(resolve => httpServer.listen(config.port, config.host, () => {
+      logger.info('server_started', { port: httpServer.address().port, lokiEnabled: Boolean(config.loki.url) });
+      resolve();
+    })),
+    close: async () => {
       clearInterval(heartbeat);
       rooms.disposeAll();
       connections.forEach(c => c.close());
       wss.close();
-      httpServer.close(() => resolve());
-    })
+      await new Promise(resolve => httpServer.close(() => resolve()));
+      logger.info('server_stopped');
+      await logger.close();
+    }
   };
 }
 

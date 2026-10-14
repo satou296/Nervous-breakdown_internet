@@ -1,5 +1,5 @@
 import { ErrorCode } from '../../src/net/Protocol.js';
-import { Room } from './Room.js';
+import { Room, RoomState } from './Room.js';
 import { RoomError } from './RoomError.js';
 
 /**
@@ -10,14 +10,30 @@ export class RoomManager {
   #rooms = new Map();
   #cleanupTimers = new Map();
 
-  constructor({ codeGenerator, createMatch, maxRooms, emptyRoomTtlMs }) {
+  /**
+   * @param {(room: Room) => void} [p.onRoomOpened]  部屋ができたときに呼ぶ（記録用）
+   * @param {(room: Room) => void} [p.onRoomClosed]  誰もいなくなった部屋を消したときに呼ぶ（記録用）
+   */
+  constructor({ codeGenerator, createMatch, maxRooms, emptyRoomTtlMs, onRoomOpened = () => {}, onRoomClosed = () => {} }) {
     this.codeGenerator = codeGenerator;
     this.createMatch = createMatch;
     this.maxRooms = maxRooms;
     this.emptyRoomTtlMs = emptyRoomTtlMs;
+    this.onRoomOpened = onRoomOpened;
+    this.onRoomClosed = onRoomClosed;
   }
 
   get size() { return this.#rooms.size; }
+
+  /** 監視用：いまの部屋数・対戦中の部屋数・つながっている人数 */
+  stats() {
+    const rooms = [...this.#rooms.values()];
+    return {
+      rooms: rooms.length,
+      roomsPlaying: rooms.filter(r => r.state === RoomState.Playing).length,
+      players: rooms.reduce((sum, r) => sum + r.connectedCount, 0)
+    };
+  }
 
   create(connection, { name, difficultyId, deckSize }) {
     if (this.#rooms.size >= this.maxRooms) throw new RoomError(ErrorCode.ServerBusy, '混み合っています。しばらくしてからお試しください');
@@ -31,6 +47,7 @@ export class RoomManager {
     });
     this.#rooms.set(code, room);
     room.join(connection, { name });
+    this.onRoomOpened(room);
     return room;
   }
 
@@ -70,6 +87,7 @@ export class RoomManager {
       if (!room.isVacant) return;
       room.dispose();
       this.#rooms.delete(room.code);
+      this.onRoomClosed(room);
     }, this.emptyRoomTtlMs);
     timer.unref?.();
     this.#cleanupTimers.set(room.code, timer);

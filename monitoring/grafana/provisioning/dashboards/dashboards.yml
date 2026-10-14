@@ -1,0 +1,10 @@
+# grafana/dashboards/ に置いたダッシュボードを起動時に読み込む
+apiVersion: 1
+
+providers:
+  - name: nervous-breakdown-internet
+    folder: ''
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

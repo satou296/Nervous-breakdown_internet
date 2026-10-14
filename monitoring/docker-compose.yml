@@ -1,0 +1,85 @@
+# 監視用のコンテナ（Zabbix と Grafana）。ゲーム本体の docker-compose.yml とは別に、自分のパソコンで動かす。
+#   準備： cp .env.example .env を実行し、.env の中身を書き換える
+#   起動： docker compose up -d        （このフォルダ monitoring/ で実行する）
+#   画面： Zabbix  → http://localhost:8081   Grafana → http://localhost:3000
+#   停止： docker compose down         （集めた数値は残る。消すときは docker compose down -v）
+# 手順は docs/MONITORING_DOCKER.md を参照。
+name: nbi-monitoring
+
+services:
+  # Zabbix が集めた数値を保存するデータベース
+  zabbix-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD:?.env に ZABBIX_DB_PASSWORD を設定してください}
+      POSTGRES_DB: zabbix
+    volumes:
+      - zabbix-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zabbix -d zabbix"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # 1分ごとにゲームサーバーの /api/stats を読みに行き、異常を判定する
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
+    environment:
+      DB_SERVER_HOST: zabbix-db
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD}
+      POSTGRES_DB: zabbix
+    depends_on:
+      zabbix-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Zabbix の画面。このパソコンからだけ開ける（127.0.0.1）
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0-latest
+    environment:
+      ZBX_SERVER_HOST: zabbix-server
+      DB_SERVER_HOST: zabbix-db
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD}
+      POSTGRES_DB: zabbix
+      PHP_TZ: ${TZ:-Asia/Tokyo}
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      zabbix-db:
+        condition: service_healthy
+      zabbix-server:
+        condition: service_started
+    restart: unless-stopped
+
+  # 記録（Grafana Cloud の Loki）と数値（上の Zabbix）を1つの画面で見る
+  grafana:
+    image: grafana/grafana:12.0.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?.env に GRAFANA_ADMIN_PASSWORD を設定してください}
+      GF_INSTALL_PLUGINS: alexanderzobnin-zabbix-app
+      GF_USERS_DEFAULT_LANGUAGE: ja-JP
+      TZ: ${TZ:-Asia/Tokyo}
+      # 下の値は grafana/provisioning/datasources/datasources.yml が読む
+      LOKI_URL: ${LOKI_URL:-}
+      LOKI_USER: ${LOKI_USER:-}
+      LOKI_READ_TOKEN: ${LOKI_READ_TOKEN:-}
+      ZABBIX_API_USER: ${ZABBIX_API_USER:-Admin}
+      ZABBIX_API_PASSWORD: ${ZABBIX_API_PASSWORD:-zabbix}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - zabbix-web
+    restart: unless-stopped
+
+volumes:
+  zabbix-db:
+  grafana-data:

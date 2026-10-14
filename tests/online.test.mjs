@@ -209,7 +209,7 @@ function connectClient(port) {
 }
 
 test('サーバー起動：部屋を作って招待で参加し、対戦を始めてカードをめくれる', async () => {
-  const config = { ...loadServerConfig({ PORT: '0' }), port: 0 };
+  const config = { ...loadServerConfig({ PORT: '0', LOG_LEVEL: 'silent' }), port: 0 };
   const server = createGameServer(config);
   await server.listen();
   const { port } = server.httpServer.address();

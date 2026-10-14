@@ -1,0 +1,32 @@
+# Grafana の「データの元」を起動時に自動で登録する。値は .env から渡される。
+apiVersion: 1
+
+datasources:
+  # 記録：Grafana Cloud の Loki
+  - name: Loki
+    uid: nbi-loki
+    type: loki
+    access: proxy
+    url: $LOKI_URL
+    basicAuth: true
+    basicAuthUser: $LOKI_USER
+    secureJsonData:
+      basicAuthPassword: $LOKI_READ_TOKEN
+    editable: false
+
+  # 数値：同じ Docker の中の Zabbix
+  - name: Zabbix
+    uid: nbi-zabbix
+    type: alexanderzobnin-zabbix-datasource
+    access: proxy
+    url: http://zabbix-web:8080/api_jsonrpc.php
+    jsonData:
+      authType: userLogin
+      username: $ZABBIX_API_USER
+      trends: true
+      trendsFrom: 7d
+      trendsRange: 4d
+      cacheTTL: 1m
+    secureJsonData:
+      password: $ZABBIX_API_PASSWORD
+    editable: false

@@ -1,0 +1,6 @@
+# Zabbix プラグインを有効にする（入れるだけでは使えないため）
+apiVersion: 1
+
+apps:
+  - type: alexanderzobnin-zabbix-app
+    disabled: false

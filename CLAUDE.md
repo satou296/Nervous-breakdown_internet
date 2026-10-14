@@ -24,7 +24,7 @@ docker compose up --build      # 本番（Render）と同じコンテナ
 python3 -m http.server 8000    # 画面だけ（オンライン対戦なしの静的配信）
 ```
 
-サーバーの環境変数は `server/config/ServerConfig.js`（`PORT` / `ALLOWED_ORIGINS` / `TURN_TIMEOUT_SEC` / `MAX_ROOMS`）。本番公開の手順は `docs/DEPLOY_RENDER.md`。
+サーバーの環境変数は `server/config/ServerConfig.js`（`PORT` / `ALLOWED_ORIGINS` / `TURN_TIMEOUT_SEC` / `MAX_ROOMS`、監視用に `LOG_LEVEL` / `STATS_TOKEN` / `LOKI_URL` / `LOKI_USER` / `LOKI_TOKEN`）。本番公開の手順は `docs/DEPLOY_RENDER.md`、監視の手順は `docs/MONITORING.md` と `docs/MONITORING_DOCKER.md`。
 
 ## アーキテクチャ
 
@@ -67,6 +67,12 @@ server/index.js（サーバー側のコンポジションルート）
 - 部屋はサーバーのメモリ上のみ。1台構成が前提で、再起動で進行中の部屋は消える。
 - 静的配信は `StaticFileServer` の `publicEntries`（`index.html`・`css`・`src`）に限定。配信対象を増やすときは `Dockerfile` の `COPY` も合わせる。
 - 画面は `/api/online` を叩いてサーバー配信かどうかを判定し（`OnlineAvailability.js`）、GitHub Pages などの静的配信ではオンラインの選択肢を隠す。静的配信でも動く状態を保つこと。
+
+### 監視
+
+`server/monitoring/` が記録と数値を持ち、配線は `server/index.js` だけで行う（`Room`・`OnlineMatch` は監視を知らない。`RoomManager` の `onRoomOpened`／`onRoomClosed` と `MatchEvent.Finished` に掛ける）。記録は `Logger` 経由で「1行＝1つの JSON」（`console.log` を直接使わない）、`LOKI_URL` があれば `LokiSink` がまとめて送る。数値は `GET /api/stats`（`ServerMetrics.snapshot()`）で、非公開（`Authorization: Bearer $STATS_TOKEN` が必要。`STATS_TOKEN` 未設定なら 404 で閉じる。手元で見るときは `STATS_TOKEN=x npm start`）。**プレイヤーの名前・部屋番号・token は記録にも数値にも出さない**。`/health` の形は Render と外形監視が使っているので変えない。
+
+`monitoring/` は、自分のパソコンで動かす監視用の Docker 一式（Zabbix 7.0＋Grafana。Loki は Grafana Cloud）で、ゲーム本体のイメージには入らない。`/api/stats` の項目や記録の `event` を足す／変えるときは、`monitoring/zabbix/template_nervous_breakdown_internet.yaml`（項目とトリガー）、`monitoring/grafana/dashboards/overview.json`（項目名とホスト名 `nervous-breakdown-internet` で探す）、`docs/MONITORING.md` の表をそろえて直す。合言葉は `monitoring/.env`（git 管理外）にだけ置く。
 
 ### テスト
 

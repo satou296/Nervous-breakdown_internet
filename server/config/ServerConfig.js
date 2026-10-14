@@ -8,6 +8,10 @@ import path from 'node:path';
  *   ALLOWED_ORIGINS      接続を許すサイトのURL（カンマ区切り）。未設定なら「同じサイトから」だけ許す
  *   TURN_TIMEOUT_SEC     1手番の持ち時間（秒）
  *   MAX_ROOMS            同時に作れる部屋の数の上限
+ *   LOG_LEVEL            記録する重さの下限（debug / info / warn / error / silent）。既定は info
+ *   STATS_TOKEN          /api/stats を見るための合言葉。未設定なら /api/stats は閉じる（404）
+ *   LOKI_URL             記録の送り先（…/loki/api/v1/push）。未設定なら Loki へは送らない
+ *   LOKI_USER, LOKI_TOKEN  Loki の利用者番号と合言葉
  */
 export function loadServerConfig(env = process.env) {
   const number = (value, fallback) => {
@@ -24,6 +28,14 @@ export function loadServerConfig(env = process.env) {
     emptyRoomTtlMs: 10 * 60 * 1000,   // 誰もいなくなった部屋を消すまでの時間
     maxRooms: number(env.MAX_ROOMS, 300),
     heartbeatMs: 25000,               // 応答のない接続を切る間隔
-    rateLimit: { perSecond: 40, burst: 80 }
+    rateLimit: { perSecond: 40, burst: 80 },
+    logLevel: env.LOG_LEVEL || 'info',
+    statsToken: env.STATS_TOKEN || '',
+    loki: Object.freeze({
+      url: env.LOKI_URL || '',
+      user: env.LOKI_USER || '',
+      token: env.LOKI_TOKEN || '',
+      labels: Object.freeze({ app: 'nervous-breakdown-internet' })
+    })
   });
 }

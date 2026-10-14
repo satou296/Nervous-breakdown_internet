@@ -55,7 +55,7 @@ GitHub や Render の画面のボタン名は、変更されて少し違うこ�
    npm install
    ```
 
-4. テストを実行します。最後に `# pass 41` `# fail 0` と出れば正常です。
+4. テストを実行します。最後に `# fail 0` と出れば正常です。
 
    ```
    npm test
@@ -276,6 +276,8 @@ index.html  package.json  README.md  render.yaml
 | `ALLOWED_ORIGINS` | 接続を許すサイトのURL（カンマ区切り）。未設定なら「同じサイトからだけ」 | 未設定 |
 
 変更して **Save Changes** を押すと、サーバーが再起動して反映されます。
+
+監視（Zabbix・Loki・Grafana）のための変数と手順は [MONITORING.md](MONITORING.md) にあります。
 
 ## 無料プランについて
 
