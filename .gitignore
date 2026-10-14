@@ -2,3 +2,9 @@ node_modules/
 .DS_Store
 # 監視用コンテナの設定（合言葉が入る）
 monitoring/.env
+# 合言葉が入りうるファイルは、どこに置いても上げない（見本の .env.example だけは上げる）
+.env
+.env.*
+!.env.example
+*.pem
+*.key
