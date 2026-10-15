@@ -1,5 +1,5 @@
 /**
- * 腕を伸ばすほど、右手と伸びた袖を透かす。Updatable。
+ * 腕を伸ばすほど、右手と腕を透かす。Updatable。
  * 伸ばした腕が狙っているカードや周りのカードを隠さないようにするため。
  */
 export class ArmVisibility {
@@ -8,7 +8,7 @@ export class ArmVisibility {
   /**
    * @param {object} p
    * @param {{ reach: number }} p.hand        いまの伸び（メートル）を持つもの
-   * @param {THREE.Material[]} p.materials    透かす対象（右手・袖の材質）
+   * @param {THREE.Material[]} p.materials    透かす対象（右手と腕の肌の材質）
    */
   constructor({ hand, materials, minOpacity, fadeOverReach }) {
     this.hand = hand;

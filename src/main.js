@@ -117,7 +117,7 @@ async function main() {
     shoulderPosition: new THREE.Vector3(...ARM.shoulder)
   });
   const rightArm = new BareArm({
-    camera: rig.camera, hand: pointingHand, forearmEnd: rightHandModel.userData.forearmEnd,
+    camera: rig.camera, hand: pointingHand, wrist: rightHandModel.userData.wrist,
     radius: ARM.skinRadius, beyondShoulder: ARM.beyondShoulder, material: rightHandModels.materials.skin
   });
   const armVisibility = new ArmVisibility({
@@ -135,7 +135,7 @@ async function main() {
     shoulderPosition: new THREE.Vector3(...ARM.leftShoulder)
   });
   const leftArm = new BareArm({
-    camera: rig.camera, hand: holdingHand, forearmEnd: leftHandModel.userData.forearmEnd,
+    camera: rig.camera, hand: holdingHand, wrist: leftHandModel.userData.wrist,
     radius: ARM.skinRadius, beyondShoulder: ARM.beyondShoulder, material: leftHandModels.materials.skin
   });
 
