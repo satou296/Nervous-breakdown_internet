@@ -21,14 +21,17 @@ export class FloatLayout {
     );
   }
 
-  /** @param {() => number} [random] 並びを再現したいときは種付きの乱数を渡す */
-  sample(count, random = this.random) {
+  /**
+   * @param {() => number} [random] 並びを再現したいときは種付きの乱数を渡す
+   * @param {{ widthScale?: number }} [options] 左右の広がりを中央寄りに縮める割合（1 で範囲いっぱい）
+   */
+  sample(count, random = this.random, { widthScale = 1 } = {}) {
     const { minSpacing } = this.area;
     const points = [];
     let spacing = minSpacing;
     let failures = 0;
     while (points.length < count) {
-      const p = this.randomPoint(random);
+      const p = this.randomPoint(random, widthScale);
       if (points.every(o => o.distanceTo(p) > spacing)) {
         points.push(p);
         failures = 0;
@@ -41,11 +44,11 @@ export class FloatLayout {
   }
 
   /** 浮遊してよい範囲（奥ほど広がる台形）の中のランダムな1点 */
-  randomPoint(random = this.random) {
+  randomPoint(random = this.random, widthScale = 1) {
     const a = this.area;
     const z = a.nearZ - random() * a.depth;
     const depthIn = -z + a.nearZ; // 0 = 手前
-    const halfWidth = a.baseHalfWidth + depthIn * a.widthGrowth;
+    const halfWidth = (a.baseHalfWidth + depthIn * a.widthGrowth) * widthScale;
     const height = a.baseHeight + depthIn * a.heightGrowth;
     return new THREE.Vector3(
       (random() * 2 - 1) * halfWidth,

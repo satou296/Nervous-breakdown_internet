@@ -81,6 +81,7 @@ test('どの段階にも説明文と番号がある', () => {
 test('チュートリアルのカードは定位置から動かず、上から降らせず、腕を使わずクリックでめくる', () => {
   assert.equal(TUTORIAL_DIFFICULTY.interaction, 'point');
   assert.equal(TUTORIAL_DIFFICULTY.dealFromAbove, false);
+  assert.ok(TUTORIAL_DIFFICULTY.spread > 0 && TUTORIAL_DIFFICULTY.spread < 1);
   assert.equal(TUTORIAL_DIFFICULTY.travel, undefined);
   const drift = new DriftFactory().create(TUTORIAL_DIFFICULTY.drift);
   const out = { set(x, y, z) { Object.assign(this, { x, y, z }); return this; } };

@@ -10,6 +10,7 @@
  *              'reach' … 腕を伸ばし、手のひらで触れたカードを左クリックで選ぶ（腕に当たったカードは弾かれて散らばる）
  * holdOnTouch: 手のひらが触れたカードをその場に止めるか（reach のときだけ意味がある）
  * dealFromAbove: 配るときに上から降らせるか（省略すると降らせる）
+ * spread: 配置の左右の広がり（1 で浮遊範囲いっぱい。省略すると 1）
  */
 export const DIFFICULTIES = Object.freeze({
   normal: Object.freeze({
@@ -70,7 +71,8 @@ export const TUTORIAL_DIFFICULTY = Object.freeze({
   drift: Object.freeze({ type: 'still' }),
   spinScale: 1,
   interaction: 'point',
-  dealFromAbove: false
+  dealFromAbove: false,
+  spread: 0.5   // 動かないので、画面左の説明パネルの裏に隠れないよう中央寄りに置く
 });
 
 export function getDifficulty(id) {

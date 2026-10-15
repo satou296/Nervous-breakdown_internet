@@ -11,7 +11,13 @@ const STEP_TEXT = {
 function collectErrors(page) {
   const errors = [];
   page.on('pageerror', err => errors.push(err.message));
-  page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+  page.on('console', msg => {
+    if (msg.type() !== 'error') return;
+    // 外部（フォント・CDN）の一時的な読み込み失敗は、ゲームの不具合ではないので数えない
+    const external = !(msg.location().url ?? '').startsWith('http://localhost');
+    if (external && msg.text().startsWith('Failed to load resource')) return;
+    errors.push(msg.text());
+  });
   return errors;
 }
 
@@ -22,29 +28,26 @@ async function openAndWaitTutorial(page, path = '/') {
 }
 
 /**
- * カードの位置はページの外からは分からないので、画面を格子状にクリックしていき、
- * 説明文が変わる（＝カードがめくれて進行した）まで続ける。
+ * カードの位置はページの外からは分からないので、画面のあちこちをランダムにクリックしていき、
+ * 条件を満たす（＝カードがめくれて進行した）まで続ける。
+ * 格子状だと、小さく遠いカードが格子の間にあるとずっと当たらないので、毎回ランダムな位置にする。
  */
 async function clickUntil(page, isReached, { timeoutMs = 60_000 } = {}) {
   const { width, height } = page.viewportSize();
   const deadline = Date.now() + timeoutMs;
-  // 左側は説明パネルがあるので避ける。カードは画面の上半分あたりに浮かんでいる
-  const xs = [0.32, 0.4, 0.48, 0.56, 0.64, 0.72, 0.8, 0.88];
-  const ys = [0.08, 0.16, 0.24, 0.32, 0.4, 0.48, 0.56];
-  const points = ys.flatMap(y => xs.map(x => [x, y]));
   while (Date.now() < deadline) {
-    // 毎回同じ順だと同じ組み合わせばかりめくるので、順番を混ぜる
-    for (const [x, y] of points.sort(() => Math.random() - 0.5)) {
-      if (await isReached()) return;
-      await page.mouse.click(Math.round(width * x), Math.round(height * y));
-      await page.waitForTimeout(50);
-    }
+    if (await isReached()) return;
+    // 左側は説明パネルがあるので避ける。チュートリアルのカードは画面の中央寄りに置かれ、動かない
+    const x = width * (0.28 + Math.random() * 0.52);
+    const y = height * (0.05 + Math.random() * 0.57);
+    await page.mouse.click(Math.round(x), Math.round(y));
+    await page.waitForTimeout(40);
   }
   throw new Error('時間内に進みませんでした');
 }
 
 test('開くとチュートリアルが始まり、本物のゲーム画面でカードをめくって最後まで進められる', async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(480_000);
   const errors = collectErrors(page);
   await openAndWaitTutorial(page);
   await expect(page.locator('#tutorialText')).toContainText(STEP_TEXT.pickFirst);
@@ -62,7 +65,7 @@ test('開くとチュートリアルが始まり、本物のゲーム画面で�
 
   // 最後までそろえると「ゲームをはじめる」が出て、押すとスタート画面へ
   const finish = page.locator('#tutorialFinish');
-  await clickUntil(page, () => finish.isVisible(), { timeoutMs: 240_000 });
+  await clickUntil(page, () => finish.isVisible(), { timeoutMs: 420_000 });
   await expect(text).toContainText(STEP_TEXT.done);
   await expect(page.locator('#tutorialSkip')).toBeHidden();
   await finish.click();

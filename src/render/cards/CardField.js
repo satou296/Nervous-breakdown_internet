@@ -31,7 +31,7 @@ export class CardField {
 
   /**
    * @param {Card[]} cards
-   * @param {{ drift: object, travel?: object, spinScale: number, dealFromAbove?: boolean }} difficulty
+   * @param {{ drift: object, travel?: object, spinScale: number, dealFromAbove?: boolean, spread?: number }} difficulty
    * @param {{ seed?: number, realCards?: boolean }} [options]
    *   seed … 同じ種なら、配置と浮遊の動きが毎回まったく同じになる
    *   （オンライン対戦で全員の画面をそろえるため。カードごとに独立した乱数を使う）
@@ -39,7 +39,7 @@ export class CardField {
    */
   populate(cards, difficulty, { seed = randomSeed(this.random), realCards = false } = {}) {
     this.clear();
-    const anchors = this.layout.sample(cards.length, createRandom(seed));
+    const anchors = this.layout.sample(cards.length, createRandom(seed), { widthScale: difficulty.spread ?? 1 });
     cards.forEach((card, i) => {
       const random = createRandom(deriveSeed(seed, card.id + 1));
       const view = new CardView({
