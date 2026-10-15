@@ -5,8 +5,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 /**
  * 浮遊状態：定位置（anchor）＋漂い方（drift）の位置へ向かいながら回転する。
- * 本物のトランプと同じく片面にしか数字がないので、うら面を見る人（viewer）へ向けたまま、
- * 面の中でくるくる回り（roll）、ゆらゆら傾く（wobble）。傾きは maxTilt までに抑え、おもて面は見せない。
+ * ふだんは両面とも裏なので、自由にくるくる回る。
+ * facesViewer のとき（チュートリアルの本物と同じカード）は片面にしか数字がないので、うら面を見る人（viewer）へ
+ * 向けたまま、面の中で回り（roll）、ゆらゆら傾く（wobble）。傾きは maxTilt までに抑え、おもて面は見せない。
  * 定位置そのものの動き方は travel（AnchorTravel）に任せる（極では範囲内を渡り歩く）。
  * 腕に当たると、押し出し（push）と弾き（knock）で定位置ごと動く＝散らばる。
  * カードごとに1つ持ち、裏に戻ったときに再利用する。
@@ -34,10 +35,12 @@ export class FloatBehavior {
    * @param {THREE.Object3D} p.home    浮遊中の親（シーン）
    * @param {THREE.Box3} [p.bounds]    はみ出してはいけない範囲
    * @param {object} [p.travel]        AnchorTravel（step(anchor, dt) を持つ）。省略すると定位置は動かない
-   * @param {THREE.Vector3} p.viewer   うら面を向ける相手（プレイヤーの目の位置）
+   * @param {boolean} [p.facesViewer] うら面を viewer へ向け続けるか（本物と同じカードのとき）
+   * @param {THREE.Vector3} [p.viewer] うら面を向ける相手（プレイヤーの目の位置）
    */
   constructor({
-    anchor, drift, home, bounds = null, travel = null, motion, viewer, spinScale = 1, knockDrag = 1.6, random = Math.random
+    anchor, drift, home, bounds = null, travel = null, motion, facesViewer = false, viewer = null,
+    spinScale = 1, knockDrag = 1.6, random = Math.random
   }) {
     const signed = () => (random() < 0.5 ? -1 : 1);
     this.anchor = anchor.clone();
@@ -46,12 +49,18 @@ export class FloatBehavior {
     this.bounds = bounds;
     this.travel = travel;
     this.motion = motion;
+    this.facesViewer = facesViewer;
     this.viewer = viewer;
-    const { wobble } = motion.float;
+    // 乱数を使う順番は、オンラインで全員の動きをそろえるため変えない（向きを保つ分は後ろに足す）
+    this.axis = new THREE.Vector3((random() - 0.5) * 0.7, 1, (random() - 0.5) * 0.7).normalize();
     this.spinSpeed = (1.1 + random() * 1.3) * signed() * spinScale;
-    this.wobbleSpeed = [0, 1].map(() => (wobble.speed.min + random() * (wobble.speed.max - wobble.speed.min)) * spinScale);
-    this.wobblePhase = [0, 1].map(() => random() * Math.PI * 2);
-    this.roll = random() * Math.PI * 2;
+    this.tumbleSpeed = (0.25 + random() * 0.5) * signed() * spinScale;
+    if (facesViewer) {
+      const { wobble } = motion.float;
+      this.wobbleSpeed = [0, 1].map(() => (wobble.speed.min + random() * (wobble.speed.max - wobble.speed.min)) * spinScale);
+      this.wobblePhase = [0, 1].map(() => random() * Math.PI * 2);
+      this.roll = random() * Math.PI * 2;
+    }
     this.spin = 1;
     this.#knockback = new Knockback({ drag: knockDrag });
   }
@@ -96,8 +105,13 @@ export class FloatBehavior {
     const spinGoal = this.#held ? 0.15 : 1; // 押さえている間は回転もほぼ止める
     this.spin += (spinGoal - this.spin) * (1 - Math.exp(-dt * (this.#held ? 6 : spinRecoverRate)));
     const spinFactor = this.spin * (1 + this.#knockback.spinBoost) * scale;
-    this.roll += this.spinSpeed * dt * spinFactor;
-    this.#faceViewer(obj, dt, t);
+    if (this.facesViewer) {
+      this.roll += this.spinSpeed * dt * spinFactor;
+      this.#faceViewer(obj, dt, t);
+    } else {
+      obj.rotateOnAxis(this.axis, this.spinSpeed * dt * spinFactor);
+      obj.rotateX(this.tumbleSpeed * dt * spinFactor);
+    }
 
     const targetScale = 1 + view.hover * hoverScale;
     const s = obj.scale.x + (targetScale - obj.scale.x) * (1 - Math.exp(-dt * returnScaleRate * 3));

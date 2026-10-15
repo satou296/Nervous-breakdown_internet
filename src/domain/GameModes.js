@@ -9,6 +9,7 @@ import { Suit } from './Suit.js';
  * pile: 'hand'  … 自分の左手の上に積む
  *       'table' … テーブルの奥に積む
  * deck: 使う札を決めておく遊び方だけが持つ（省略すると、選んだ枚数の山札を使う）
+ * realCards: true なら本物と同じ両面（表と裏）のカードにする（省略すると、選ぶまで両面とも裏・選んだら両面とも表）
  */
 export const GAME_MODES = Object.freeze({
   solo: Object.freeze({
@@ -35,6 +36,7 @@ export const GAME_MODES = Object.freeze({
     announceTurns: false,
     showClock: false,
     showTurnCount: false,
+    realCards: true,
     deck: Object.freeze([
       { rank: 1, suit: Suit.Spade }, { rank: 1, suit: Suit.Heart },
       { rank: 7, suit: Suit.Diamond }, { rank: 7, suit: Suit.Club },

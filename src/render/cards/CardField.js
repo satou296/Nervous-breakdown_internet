@@ -33,10 +33,12 @@ export class CardField {
   /**
    * @param {Card[]} cards
    * @param {{ drift: object, travel?: object, spinScale: number }} difficulty
-   * @param {{ seed?: number }} [options] 同じ種なら、配置と浮遊の動きが毎回まったく同じになる
+   * @param {{ seed?: number, realCards?: boolean }} [options]
+   *   seed … 同じ種なら、配置と浮遊の動きが毎回まったく同じになる
    *   （オンライン対戦で全員の画面をそろえるため。カードごとに独立した乱数を使う）
+   *   realCards … 本物と同じ両面（表と裏）のカードにし、うら面をこちらへ向けて浮かべる（チュートリアル）
    */
-  populate(cards, difficulty, { seed = randomSeed(this.random) } = {}) {
+  populate(cards, difficulty, { seed = randomSeed(this.random), realCards = false } = {}) {
     this.clear();
     const anchors = this.layout.sample(cards.length, createRandom(seed));
     cards.forEach((card, i) => {
@@ -45,6 +47,7 @@ export class CardField {
         card,
         textures: this.textures,
         geometry: this.geometry,
+        twoSided: realCards,
         floatBehavior: new FloatBehavior({
           anchor: anchors[i],
           drift: this.driftFactory.create(difficulty.drift, random),
@@ -52,6 +55,7 @@ export class CardField {
           home: this.scene,
           bounds: this.bounds,
           motion: this.motion,
+          facesViewer: realCards,
           viewer: this.viewer,
           spinScale: difficulty.spinScale,
           knockDrag: this.knockDrag,
@@ -59,7 +63,7 @@ export class CardField {
         })
       });
       this.scene.add(view.object);
-      this.#dropFromAbove(view, anchors[i], random);
+      this.#dropFromAbove(view, anchors[i], random, realCards);
       view.float();
       this.#views.set(card, view);
     });
@@ -97,10 +101,14 @@ export class CardField {
     this.#views.clear();
   }
 
-  /** 配るときは定位置の少し上から、うら面をこちらへ向けて降らせる */
-  #dropFromAbove(view, anchor, random) {
+  /** 配るときは定位置の少し上から降らせる（本物と同じカードは、うら面をこちらへ向けて） */
+  #dropFromAbove(view, anchor, random, facesViewer) {
     const obj = view.object;
     obj.position.copy(anchor).add(new THREE.Vector3(0, 3 + random() * 2, 0));
+    if (!facesViewer) {
+      obj.rotation.set(random() * TAU, random() * TAU, 0);
+      return;
+    }
     obj.lookAt(this.viewer);          // +Z（おもて面）を見る人へ向けてから
     obj.rotateY(Math.PI);             // 裏返す
     obj.rotateZ(random() * TAU);

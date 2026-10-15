@@ -24,7 +24,8 @@ export class GamePresenter {
     this.#cardsById = new Map(cards.map(c => [c.id, c]));
     // pileSlot は置き場の並び順（オンラインでは自分以外の人を左から順に並べる）
     this.#piles = this.mode.seats.map((seat, i) => pileFactory.create(seat.pile, seat.pileSlot ?? i));
-    field.populate(cards, this.difficulty, seed === undefined ? {} : { seed });
+    const realCards = this.mode.realCards ?? false;
+    field.populate(cards, this.difficulty, seed === undefined ? { realCards } : { seed, realCards });
     hud.setHelp(this.usesReach ? TEXT.help.reach : TEXT.help.point);
     hud.show();
     if (this.usesReach) reachMeter.show();

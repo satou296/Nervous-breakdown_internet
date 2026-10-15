@@ -7,9 +7,10 @@ const TOUCH_GLOW = new THREE.Color(0xb08a30);
 const FACE_SELF_LIGHT = new THREE.Color(0x5a5650);
 
 /**
- * 1枚のカードの見た目。
- * 本物のトランプと同じく、おもて面（+Z 側）に数字とマーク、うら面（-Z 側）に模様を持つ両面の板。
- * 中身をまだ知らないカード（オンラインでめくられる前）は、おもて面にも模様を貼っておく。
+ * 1枚のカードの見た目。両面の板ポリゴンを持つ。
+ * ふだんは、選ぶまで「両面とも裏」、選んだら「両面とも表」。
+ * twoSided のとき（チュートリアル）は本物のトランプと同じく、おもて面（+Z 側）に数字とマーク、
+ * うら面（-Z 側）に模様を貼る。
  * 動き方は Behavior（State パターン）に委ね、どの Behavior を使うかは外（CardChoreographer）が決める。
  */
 export class CardView {
@@ -20,8 +21,9 @@ export class CardView {
   #elapsed = 0;
   #faceUp = false;
 
-  constructor({ card, textures, geometry, floatBehavior }) {
+  constructor({ card, textures, geometry, floatBehavior, twoSided = false }) {
     this.card = card;
+    this.twoSided = twoSided;
     this.textures = textures;
     this.floatBehavior = floatBehavior;
     this.hover = 0;
@@ -48,13 +50,13 @@ export class CardView {
   get isPickable() { return this.#behavior?.pickable === true; }
 
   /* ---- 見た目の面 ---- */
-  /** 表向きにする（おもて面を明るく見せる）。中身はこの時点で分かっている必要がある */
+  /** 表向きにする。中身はこの時点で分かっている必要がある */
   showFace() {
     this.#faceUp = true;
     this.#paintSides();
   }
 
-  /** 裏向きに戻す。うら面を見せて浮遊するので、おもて面は見えない向きに保たれる */
+  /** 裏向きに戻す */
   showBack() {
     this.#faceUp = false;
     this.#paintSides();
@@ -105,14 +107,23 @@ export class CardView {
 
   #paintSides() {
     const [front, back] = this.materials;
-    const known = this.card.rank !== null && this.card.rank !== undefined;
-    const face = known ? this.textures.face(this.card.rank, this.card.suit) : this.textures.back;
-    front.map = face;
-    front.emissiveMap = this.#faceUp ? face : null;
-    back.map = this.textures.back;
-    back.emissiveMap = null;
-    front.needsUpdate = true;
-    back.needsUpdate = true;
+    const { textures } = this;
+    if (this.twoSided) {
+      // 中身をまだ知らないカードは、おもて面にも模様を貼っておく
+      const known = this.card.rank !== null && this.card.rank !== undefined;
+      const face = known ? textures.face(this.card.rank, this.card.suit) : textures.back;
+      this.#setMap(front, face, this.#faceUp);
+      this.#setMap(back, textures.back, false);
+      return;
+    }
+    const shown = this.#faceUp ? textures.face(this.card.rank, this.card.suit) : textures.back;
+    this.materials.forEach(m => this.#setMap(m, shown, this.#faceUp));
+  }
+
+  #setMap(material, map, glow) {
+    material.map = map;
+    material.emissiveMap = glow ? map : null;
+    material.needsUpdate = true;
   }
 
   #setBehavior(behavior, options) {
@@ -123,7 +134,8 @@ export class CardView {
   #updateGlow() {
     if (this.#faceUp) {
       this.materials[0].emissive.copy(FACE_SELF_LIGHT);
-      this.materials[1].emissive.setScalar(0);
+      if (this.twoSided) this.materials[1].emissive.setScalar(0);
+      else this.materials[1].emissive.copy(FACE_SELF_LIGHT);
       return;
     }
     let strength = 0;
