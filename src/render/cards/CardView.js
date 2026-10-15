@@ -10,7 +10,7 @@ const FACE_SELF_LIGHT = new THREE.Color(0x5a5650);
  * 1枚のカードの見た目。両面の板ポリゴンを持つ。
  * ふだんは、選ぶまで「両面とも裏」、選んだら「両面とも表」。
  * twoSided のとき（チュートリアル）は本物のトランプと同じく、おもて面（+Z 側）に数字とマーク、
- * うら面（-Z 側）に模様を貼る。
+ * うら面（-Z 側）に模様を貼る（回っているうちに、めくる前でもおもて面が見える）。
  * 動き方は Behavior（State パターン）に委ね、どの Behavior を使うかは外（CardChoreographer）が決める。
  */
 export class CardView {

@@ -29,7 +29,7 @@ export const GAME_MODES = Object.freeze({
     showClock: false,
     showTurnCount: false
   }),
-  /** 最初に開くチュートリアル：エース・数札・絵札を1ペアずつ、計6枚 */
+  /** 最初に開くチュートリアル：エース・数札・絵札を1ペアずつ、計6枚（難易度は TUTORIAL_DIFFICULTY） */
   tutorial: Object.freeze({
     id: 'tutorial',
     seats: [{ name: TEXT.you, kind: PlayerKind.Human, pile: 'hand' }],

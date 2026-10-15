@@ -14,7 +14,7 @@ export class CardField {
   #views = new Map();
   #hovered = null;
 
-  constructor({ scene, textures, layout, driftFactory, travelFactory, motion, cardSize, knockDrag, viewer, random = Math.random }) {
+  constructor({ scene, textures, layout, driftFactory, travelFactory, motion, cardSize, knockDrag, random = Math.random }) {
     this.scene = scene;
     this.travelFactory = travelFactory;
     this.knockDrag = knockDrag;
@@ -23,7 +23,6 @@ export class CardField {
     this.driftFactory = driftFactory;
     this.motion = motion;
     this.random = random;
-    this.viewer = viewer;
     this.geometry = new THREE.PlaneGeometry(cardSize.width, cardSize.height);
     this.bounds = layout.bounds;
   }
@@ -32,11 +31,11 @@ export class CardField {
 
   /**
    * @param {Card[]} cards
-   * @param {{ drift: object, travel?: object, spinScale: number }} difficulty
+   * @param {{ drift: object, travel?: object, spinScale: number, dealFromAbove?: boolean }} difficulty
    * @param {{ seed?: number, realCards?: boolean }} [options]
    *   seed … 同じ種なら、配置と浮遊の動きが毎回まったく同じになる
    *   （オンライン対戦で全員の画面をそろえるため。カードごとに独立した乱数を使う）
-   *   realCards … 本物と同じ両面（表と裏）のカードにし、うら面をこちらへ向けて浮かべる（チュートリアル）
+   *   realCards … 本物と同じ両面（おもて面に数字、うら面に模様）のカードにする（チュートリアル）
    */
   populate(cards, difficulty, { seed = randomSeed(this.random), realCards = false } = {}) {
     this.clear();
@@ -55,15 +54,14 @@ export class CardField {
           home: this.scene,
           bounds: this.bounds,
           motion: this.motion,
-          facesViewer: realCards,
-          viewer: this.viewer,
           spinScale: difficulty.spinScale,
           knockDrag: this.knockDrag,
           random
         })
       });
       this.scene.add(view.object);
-      this.#dropFromAbove(view, anchors[i], random, realCards);
+      if (difficulty.dealFromAbove ?? true) this.#dropFromAbove(view, anchors[i], random);
+      else this.#placeAt(view, anchors[i], random);
       view.float();
       this.#views.set(card, view);
     });
@@ -101,16 +99,15 @@ export class CardField {
     this.#views.clear();
   }
 
-  /** 配るときは定位置の少し上から降らせる（本物と同じカードは、うら面をこちらへ向けて） */
-  #dropFromAbove(view, anchor, random, facesViewer) {
-    const obj = view.object;
-    obj.position.copy(anchor).add(new THREE.Vector3(0, 3 + random() * 2, 0));
-    if (!facesViewer) {
-      obj.rotation.set(random() * TAU, random() * TAU, 0);
-      return;
-    }
-    obj.lookAt(this.viewer);          // +Z（おもて面）を見る人へ向けてから
-    obj.rotateY(Math.PI);             // 裏返す
-    obj.rotateZ(random() * TAU);
+  /** 配るときは定位置の少し上から降らせる */
+  #dropFromAbove(view, anchor, random) {
+    view.object.position.copy(anchor).add(new THREE.Vector3(0, 3 + random() * 2, 0));
+    view.object.rotation.set(random() * TAU, random() * TAU, 0);
+  }
+
+  /** 降らせずに、はじめから定位置に置く */
+  #placeAt(view, anchor, random) {
+    view.object.position.copy(anchor);
+    view.object.rotation.set(random() * TAU, random() * TAU, 0);
   }
 }

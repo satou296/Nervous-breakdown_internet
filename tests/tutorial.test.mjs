@@ -8,6 +8,9 @@ import { DeckFactory } from '../src/domain/DeckFactory.js';
 import { ConcentrationGame } from '../src/domain/ConcentrationGame.js';
 import { getGameMode } from '../src/domain/GameModes.js';
 import { TEXT } from '../src/config/strings.js';
+import { DIFFICULTIES, TUTORIAL_DIFFICULTY } from '../src/config/Difficulties.js';
+import { DriftFactory } from '../src/render/cards/drift/DriftFactory.js';
+import { AnchorTravelFactory } from '../src/render/cards/travel/AnchorTravelFactory.js';
 import {
   TutorialGuide, TutorialGuideEvent, TutorialStep, TUTORIAL_STEP_COUNT, tutorialStepNumber
 } from '../src/app/tutorial/TutorialGuide.js';
@@ -73,4 +76,20 @@ test('どの段階にも説明文と番号がある', () => {
     assert.ok(n >= 1 && n <= TUTORIAL_STEP_COUNT, step);
   }
   assert.equal(tutorialStepNumber(TutorialStep.Done), TUTORIAL_STEP_COUNT);
+});
+
+test('チュートリアルのカードは定位置から動かず、上から降らせず、腕を使わずクリックでめくる', () => {
+  assert.equal(TUTORIAL_DIFFICULTY.interaction, 'point');
+  assert.equal(TUTORIAL_DIFFICULTY.dealFromAbove, false);
+  assert.equal(TUTORIAL_DIFFICULTY.travel, undefined);
+  const drift = new DriftFactory().create(TUTORIAL_DIFFICULTY.drift);
+  const out = { set(x, y, z) { Object.assign(this, { x, y, z }); return this; } };
+  for (const t of [0, 1.3, 7.9, 120]) assert.deepEqual({ ...drift.offsetAt(t, out) }, { ...out, x: 0, y: 0, z: 0 });
+  const anchor = { x: 1, y: 2, z: 3 };
+  new AnchorTravelFactory({ layout: { randomPoint: () => ({ x: 9, y: 9, z: 9 }) } }).create(TUTORIAL_DIFFICULTY.travel).step(anchor, 1);
+  assert.deepEqual(anchor, { x: 1, y: 2, z: 3 });
+});
+
+test('チュートリアルの難易度はメニュー・オンラインでは選べない', () => {
+  assert.equal(DIFFICULTIES[TUTORIAL_DIFFICULTY.id], undefined);
 });

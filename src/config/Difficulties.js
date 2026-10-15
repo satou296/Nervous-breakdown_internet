@@ -9,6 +9,7 @@
  * interaction: 'point' … カーソルを合わせてクリックで選ぶ
  *              'reach' … 腕を伸ばし、手のひらで触れたカードを左クリックで選ぶ（腕に当たったカードは弾かれて散らばる）
  * holdOnTouch: 手のひらが触れたカードをその場に止めるか（reach のときだけ意味がある）
+ * dealFromAbove: 配るときに上から降らせるか（省略すると降らせる）
  */
 export const DIFFICULTIES = Object.freeze({
   normal: Object.freeze({
@@ -58,6 +59,19 @@ export const DIFFICULTIES = Object.freeze({
 });
 
 export const DEFAULT_DIFFICULTY_ID = 'normal';
+
+/**
+ * チュートリアル専用の難易度（メニューやオンラインでは選べないので DIFFICULTIES には入れない）。
+ * カードは定位置から動かずその場で回るだけで、腕は使わずクリックだけでめくる。
+ */
+export const TUTORIAL_DIFFICULTY = Object.freeze({
+  id: 'tutorial',
+  label: 'チュートリアル',
+  drift: Object.freeze({ type: 'still' }),
+  spinScale: 1,
+  interaction: 'point',
+  dealFromAbove: false
+});
 
 export function getDifficulty(id) {
   const difficulty = DIFFICULTIES[id];

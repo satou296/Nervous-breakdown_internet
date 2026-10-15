@@ -1,5 +1,6 @@
 import { CalmDrift } from './CalmDrift.js';
 import { RoamingDrift } from './RoamingDrift.js';
+import { StillDrift } from './StillDrift.js';
 
 /**
  * 難易度の drift 定義（{ type, ... }）から DriftPattern を作る。
@@ -11,6 +12,7 @@ export class DriftFactory {
   constructor({ random = Math.random } = {}) {
     this.random = random;
     this.register('calm', (spec, random) => new CalmDrift({ amplitude: spec.amplitude, random }));
+    this.register('still', () => new StillDrift());
     this.register('roam', (spec, random) => new RoamingDrift({ range: spec.range, speed: spec.speed, random }));
   }
 

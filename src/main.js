@@ -8,7 +8,7 @@ import {
   FLOAT_AREA, REVEAL_LAYOUT, TABLE, CAMERA, POINTER, CPU, PILES, ARM
 } from './config/GameConfig.js';
 import { TEXT } from './config/strings.js';
-import { DIFFICULTIES, DEFAULT_DIFFICULTY_ID, getDifficulty } from './config/Difficulties.js';
+import { DIFFICULTIES, DEFAULT_DIFFICULTY_ID, TUTORIAL_DIFFICULTY, getDifficulty } from './config/Difficulties.js';
 
 import { GameLoop } from './core/GameLoop.js';
 import { PausableClock } from './core/PausableClock.js';
@@ -153,8 +153,7 @@ async function main() {
     layout: floatLayout,
     driftFactory: new DriftFactory(),
     travelFactory: new AnchorTravelFactory({ layout: floatLayout }),
-    knockDrag: ARM.knockDrag,
-    viewer: new THREE.Vector3(...CAMERA.position)
+    knockDrag: ARM.knockDrag
   });
   const picker = new CardPicker({ camera: rig.camera, field });
   const choreographer = new CardChoreographer({
@@ -249,7 +248,7 @@ async function main() {
     tutorialGuide: new TutorialGuide(),
     createTutorialSession: () => new LocalGameSession({
       mode: getGameMode('tutorial'),
-      difficulty: getDifficulty(DEFAULT_DIFFICULTY_ID),
+      difficulty: TUTORIAL_DIFFICULTY,
       services: sessionServices
     })
   });

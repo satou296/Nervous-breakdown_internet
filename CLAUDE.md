@@ -78,13 +78,13 @@ server/index.js（サーバー側のコンポジションルート）
 
 ### チュートリアル
 
-URL を開くと、毎回まずチュートリアル（`GAME_MODES.tutorial`：決まった6枚を1人でめくる本物のゲーム）が始まる。`TutorialGuide`（`src/app/tutorial/`、DOM 非依存）がルールのイベントから説明の段階を決め、`TutorialScreen` が表示する。スキップ／完了で、URL を開いたときに本来出す画面（招待URLなら参加画面、それ以外はスタート画面）へ進む。
+URL を開くと、毎回まずチュートリアル（`GAME_MODES.tutorial`＋`TUTORIAL_DIFFICULTY`：決まった6枚を1人でクリックでめくる本物のゲーム）が始まる。`TutorialGuide`（`src/app/tutorial/`、DOM 非依存）がルールのイベントから説明の段階を決め、`TutorialScreen` が表示する。スキップ／完了で、URL を開いたときに本来出す画面（招待URLなら参加画面、それ以外はスタート画面）へ進む。
 
 ### カードと手の見た目
 
 - カードはふだん、選ぶまで両面とも裏・選んだら両面とも表（`CardView`）で、浮遊中は自由に回る。
-- チュートリアルだけ（`GAME_MODES.tutorial.realCards`）は本物と同じく、おもて面（+Z）に数字、うら面（-Z）に模様。浮遊中は `FloatBehavior`（`facesViewer`）がうら面をプレイヤー（`viewer`）へ向けたまま面内で回し、傾きを `MOTION.float.maxTilt`（π/2 未満）に抑えて、おもて面を見せない。
-- `FloatBehavior` の乱数を使う順番は変えない（オンラインで全員の動きをそろえるため。足すなら後ろに）。
+- チュートリアルだけ（`GAME_MODES.tutorial.realCards`）は本物と同じく、おもて面（+Z）に数字、うら面（-Z）に模様（回るので、めくる前でもおもて面が見えてよい）。難易度は `TUTORIAL_DIFFICULTY`（メニュー・オンラインでは選べないので `DIFFICULTIES` に入れない）で、カードは定位置から動かず（`drift: still`、上から降らせない）その場で回るだけ、腕は使わずクリックでめくる。
+- `FloatBehavior` の乱数を使う順番は変えない（オンラインで全員の動きをそろえるため）。
 - 手は素手。腕は `BareArm` が画面の外の肩から前腕までつなぎ、どこまでも続いて見えるようにしている。
 
 ### テスト

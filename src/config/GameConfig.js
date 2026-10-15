@@ -36,13 +36,7 @@ export const MOTION = Object.freeze({
   returnScaleRate: 4,
   hoverScale: 0.1,
   followRate: 1.5,
-  spinRecoverRate: 0.9,
-  /** 本物と同じカード（チュートリアル）の浮遊中の向き：うら面をプレイヤーへ向けたまま面内で回り、少しだけ傾く（おもて面は見せない） */
-  float: Object.freeze({
-    wobble: Object.freeze({ angle: 0.38, speed: Object.freeze({ min: 0.35, max: 0.8 }) }),
-    maxTilt: 1.0,     // 傾きの上限（ラジアン）。π/2 未満なら、おもて面はこちらを向かない
-    turnRate: 7       // 目標の向きへ追いつく速さ
-  })
+  spinRecoverRate: 0.9
 });
 
 /** カードが浮遊する空間（奥ほど広がる台形の箱） */
