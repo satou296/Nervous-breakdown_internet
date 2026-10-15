@@ -6,11 +6,13 @@ import { SessionEvent } from './session/SessionEvent.js';
 import { PointerInputEvent } from '../input/PointerInput.js';
 import { KeyboardInputEvent } from '../input/KeyboardInput.js';
 import { LobbyEvent } from '../online/OnlineLobby.js';
+import { TutorialScreenEvent } from '../ui/TutorialScreen.js';
+import { TutorialGuideEvent, TUTORIAL_STEP_COUNT, TutorialStep, tutorialStepNumber } from './tutorial/TutorialGuide.js';
 
 const ONLINE_MODE_ID = 'online';
 
 /**
- * 画面遷移（メニュー → プレイ ⇄ ポーズ → 結果、オンラインでは 待合室 → プレイ → 結果 → 待合室）と、
+ * 画面遷移（チュートリアル → メニュー → プレイ ⇄ ポーズ → 結果、オンラインでは 待合室 → プレイ → 結果 → 待合室）と、
  * 入力のプレイ中セッションへの振り分け。
  * セッションの作り方は createLocalSession / createOnlineSession に、
  * 部屋の出入りは lobby（OnlineLobby）に、ポーズは pause（PauseController）に委ねる。
@@ -20,15 +22,18 @@ export class App {
   #session = null;
   #lastLocalSettings = null;
   #onlineAvailable = false;
+  #inTutorial = false;
 
   constructor({
     menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, rig, pointingHand,
     attract, createLocalSession, createOnlineSession, lobby, roomLink, resultFormatter, toast, strings,
+    tutorialScreen, tutorialGuide, createTutorialSession,
     documentRef = document
   }) {
     Object.assign(this, {
       menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, rig, pointingHand,
       attract, createLocalSession, createOnlineSession, lobby, roomLink, resultFormatter, toast, strings,
+      tutorialScreen, tutorialGuide, createTutorialSession,
       documentRef
     });
   }
@@ -41,10 +46,8 @@ export class App {
     this.#wireScreens();
     this.attract.show();
     this.loading.hide();
-    // 招待URLで開いたときは、確認の結果を待たずに参加画面へ（つながらなければその画面でエラーを出す）
-    const inviteCode = this.roomLink.currentCode();
-    if (inviteCode) this.lobby.openJoin(inviteCode);
-    else this.menu.show();
+    // 開いたら、まずチュートリアル（遊んだことがある人はスキップでいつもの最初の画面へ）
+    this.#startTutorial();
   }
 
   /** いま人間が操作できるか（ホバー・手の向き・タップで使う） */
@@ -118,6 +121,9 @@ export class App {
     this.pauseButton.on(PauseButtonEvent.Press, () => this.#togglePause());
     this.pauseScreen.on(PauseScreenEvent.Resume, () => this.pause.resume());
     this.pauseScreen.on(PauseScreenEvent.Quit, () => this.#quit());
+    this.tutorialScreen.on(TutorialScreenEvent.Skip, () => this.#leaveTutorial());
+    this.tutorialScreen.on(TutorialScreenEvent.Finish, () => this.#leaveTutorial());
+    this.tutorialGuide.on(TutorialGuideEvent.StepChanged, step => this.#showTutorialStep(step));
 
     this.lobby.on(LobbyEvent.MatchStarted, start => this.#runSession(this.createOnlineSession(start)));
     this.lobby.on(LobbyEvent.Exited, ({ message }) => {
@@ -151,12 +157,55 @@ export class App {
     }
   }
 
-  #runSession(session) {
+  /** 開いた直後のチュートリアル。実際のゲームと同じ画面で、少ない枚数を1人でめくる */
+  #startTutorial() {
+    this.#inTutorial = true;
+    try {
+      const session = this.createTutorialSession();
+      // 終わったら結果画面ではなく、チュートリアルの「ゲームをはじめる」を待つ
+      this.#runSession(session, { onFinished: () => {} });
+      this.tutorialGuide.attach(session.game);
+    } catch (err) {
+      console.error(err);
+      this.#leaveTutorial();
+    }
+  }
+
+  #showTutorialStep(step) {
+    if (!step) return;
+    this.tutorialScreen.show({
+      text: this.strings.tutorial.steps[step],
+      progress: this.strings.tutorial.progress(tutorialStepNumber(step), TUTORIAL_STEP_COUNT),
+      done: step === TutorialStep.Done
+    });
+  }
+
+  /** チュートリアルを終える（スキップも同じ）。URL を開いたときに本来出す画面へ */
+  #leaveTutorial() {
+    this.#inTutorial = false;
+    this.tutorialGuide.detach();
+    this.tutorialScreen.hide();
+    this.#endSession();
+    this.pause.reset();
+    this.result.hide();
+    this.attract.show();
+    this.#openHome();
+  }
+
+  /** URL を開いたときの最初の画面：招待URLなら参加画面、それ以外はスタート画面 */
+  #openHome() {
+    // 招待URLで開いたときは、確認の結果を待たずに参加画面へ（つながらなければその画面でエラーを出す）
+    const inviteCode = this.roomLink.currentCode();
+    if (inviteCode) this.lobby.openJoin(inviteCode);
+    else this.menu.show();
+  }
+
+  #runSession(session, { onFinished = summary => this.#showResult(summary, session) } = {}) {
     this.#endSession();
     this.attract.hide();
     this.menu.hide();
     this.result.hide();
-    session.on(SessionEvent.Finished, summary => this.#showResult(summary, session));
+    session.on(SessionEvent.Finished, onFinished);
     session.on(SessionEvent.Aborted, ({ message }) => {
       this.toast.show(message, 'bad');
       this.#quit();
@@ -181,8 +230,12 @@ export class App {
     this.lobby.showRoom();
   }
 
-  /** スタート画面へ戻る（オンラインなら部屋も出る） */
+  /** スタート画面へ戻る（オンラインなら部屋も出る。チュートリアル中なら終えて最初の画面へ） */
   #quit() {
+    if (this.#inTutorial) {
+      this.#leaveTutorial();
+      return;
+    }
     if (this.lobby.inRoom) this.lobby.leave();
     this.#openMenu();
   }

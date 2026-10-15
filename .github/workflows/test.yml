@@ -1,14 +1,16 @@
 # GitHub に push するたびに、自動でテストを実行する。
 # 結果はリポジトリの「Actions」タブで確認できる（緑のチェック＝成功）。
+# main へのマージは、unit と e2e（実際のブラウザでゲームを動かす確認）の両方が通ってから行う。
 name: test
 
+# 作業ブランチへの push でも走らせて、main へマージする前に結果を確かめられるようにする
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
 
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,3 +19,25 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          CI: true
+      # 失敗したときの画面写真・操作の記録（Actions の画面からダウンロードできる）
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

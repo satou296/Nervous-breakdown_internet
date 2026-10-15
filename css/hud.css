@@ -77,3 +77,23 @@
 @keyframes contact-pulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .contact-dot { animation: none; } }
 @media (max-width: 440px) { .contact-hint { font-size: .74rem; padding: 7px 12px; } }
+
+/* チュートリアルの説明パネル（めくったカードを置く画面下部と、中央のお知らせを避けて左側に出す） */
+.tutorial {
+  position: fixed; left: 16px; top: 50%; transform: translateY(-50%);
+  width: min(320px, calc(100vw - 32px)); box-sizing: border-box;
+  background: rgba(22, 15, 11, .88); border: 1px solid var(--brass); border-radius: 14px; padding: 14px 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.tutorial-text { margin: 6px 0 12px; font-size: .88rem; line-height: 1.7; color: var(--ink); }
+.tutorial-actions { display: flex; flex-direction: column; gap: 8px; }
+.tutorial-actions .btn { width: 100%; }
+.tutorial-skip { flex-direction: column; gap: 0; padding: 8px 14px; font-size: .85rem; }
+.tutorial-skip small { font-weight: 400; font-size: .68rem; letter-spacing: .06em; color: var(--muted); }
+/* 幅の狭い画面では、2段に折り返した HUD（手番／得点・一時停止）のすぐ下に出す */
+@media (max-width: 640px) {
+  .tutorial { top: calc(env(safe-area-inset-top, 0px) + 166px); transform: none; padding: 10px 12px; }
+  .tutorial-text { font-size: .78rem; line-height: 1.6; margin: 4px 0 8px; }
+  .tutorial-skip { padding: 6px 12px; }
+}

@@ -17,6 +17,17 @@ export class DeckFactory {
     for (let rank = 1; rank <= maxRank; rank++) {
       for (const suit of SUITS) faces.push({ rank, suit: suit.id });
     }
-    return this.shuffler.shuffle(faces).map((face, id) => new Card(id, face.rank, face.suit));
+    return this.createFrom(faces);
+  }
+
+  /**
+   * 決められた札だけで山札を作る（チュートリアル用）。シャッフルしてから番号を振るのは create と同じ。
+   * @param {{ rank: number, suit: number }[]} faces
+   */
+  createFrom(faces) {
+    for (const { rank } of faces) {
+      if (!(rank >= 1 && rank <= MAX_RANK)) throw new RangeError(`rank は 1〜${MAX_RANK} です`);
+    }
+    return this.shuffler.shuffle([...faces]).map((face, id) => new Card(id, face.rank, face.suit));
   }
 }

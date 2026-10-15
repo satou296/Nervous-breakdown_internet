@@ -8,7 +8,8 @@ const FACE_SELF_LIGHT = new THREE.Color(0x5a5650);
 
 /**
  * 1枚のカードの見た目。
- * 両面の板ポリゴンを持ち、「両面とも表」「両面とも裏」を切り替えられる。
+ * 本物のトランプと同じく、おもて面（+Z 側）に数字とマーク、うら面（-Z 側）に模様を持つ両面の板。
+ * 中身をまだ知らないカード（オンラインでめくられる前）は、おもて面にも模様を貼っておく。
  * 動き方は Behavior（State パターン）に委ね、どの Behavior を使うかは外（CardChoreographer）が決める。
  */
 export class CardView {
@@ -25,6 +26,7 @@ export class CardView {
     this.floatBehavior = floatBehavior;
     this.hover = 0;
 
+    // [0] おもて面（数字とマーク）, [1] うら面（模様）
     this.materials = [0, 1].map(() => new THREE.MeshStandardMaterial({
       map: textures.back, roughness: 0.48, metalness: 0, alphaTest: 0.5, emissive: 0x000000
     }));
@@ -40,20 +42,22 @@ export class CardView {
     }
     this.object = new THREE.Group();
     this.object.add(front, back);
+    this.showBack();
   }
 
   get isPickable() { return this.#behavior?.pickable === true; }
 
   /* ---- 見た目の面 ---- */
-  showFaceOnBothSides() {
-    const face = this.textures.face(this.card.rank, this.card.suit);
+  /** 表向きにする（おもて面を明るく見せる）。中身はこの時点で分かっている必要がある */
+  showFace() {
     this.#faceUp = true;
-    this.materials.forEach(m => { m.map = face; m.emissiveMap = face; m.needsUpdate = true; });
+    this.#paintSides();
   }
 
-  showBackOnBothSides() {
+  /** 裏向きに戻す。うら面を見せて浮遊するので、おもて面は見えない向きに保たれる */
+  showBack() {
     this.#faceUp = false;
-    this.materials.forEach(m => { m.map = this.textures.back; m.emissiveMap = null; m.needsUpdate = true; });
+    this.#paintSides();
   }
 
   /* ---- 動きの切り替え ---- */
@@ -99,6 +103,18 @@ export class CardView {
     this.materials.forEach(m => m.dispose());
   }
 
+  #paintSides() {
+    const [front, back] = this.materials;
+    const known = this.card.rank !== null && this.card.rank !== undefined;
+    const face = known ? this.textures.face(this.card.rank, this.card.suit) : this.textures.back;
+    front.map = face;
+    front.emissiveMap = this.#faceUp ? face : null;
+    back.map = this.textures.back;
+    back.emissiveMap = null;
+    front.needsUpdate = true;
+    back.needsUpdate = true;
+  }
+
   #setBehavior(behavior, options) {
     this.#behavior = behavior;
     behavior.enter(this, options);
@@ -106,7 +122,8 @@ export class CardView {
 
   #updateGlow() {
     if (this.#faceUp) {
-      for (const m of this.materials) m.emissive.copy(FACE_SELF_LIGHT);
+      this.materials[0].emissive.copy(FACE_SELF_LIGHT);
+      this.materials[1].emissive.setScalar(0);
       return;
     }
     let strength = 0;

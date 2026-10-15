@@ -70,7 +70,7 @@ export class GamePresenter {
     cards.forEach(c => this.s.choreographer.collect(this.viewOf(c), pile.nextSlot()));
   }
 
-  /** 両面を裏に戻して、ふたたび宙を漂わせる */
+  /** 裏向きに戻して、ふたたび宙を漂わせる */
   returnToAir(cards) {
     cards.forEach(c => this.s.choreographer.returnToAir(this.viewOf(c)));
   }

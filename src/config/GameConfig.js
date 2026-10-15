@@ -36,7 +36,13 @@ export const MOTION = Object.freeze({
   returnScaleRate: 4,
   hoverScale: 0.1,
   followRate: 1.5,
-  spinRecoverRate: 0.9
+  spinRecoverRate: 0.9,
+  /** 浮遊中の向き：うら面をプレイヤーへ向けたまま面内で回り、少しだけ傾く（おもて面は見せない） */
+  float: Object.freeze({
+    wobble: Object.freeze({ angle: 0.38, speed: Object.freeze({ min: 0.35, max: 0.8 }) }),
+    maxTilt: 1.0,     // 傾きの上限（ラジアン）。π/2 未満なら、おもて面はこちらを向かない
+    turnRate: 7       // 目標の向きへ追いつく速さ
+  })
 });
 
 /** カードが浮遊する空間（奥ほど広がる台形の箱） */
@@ -101,7 +107,10 @@ export const ARM = Object.freeze({
   /* 見た目：伸ばすほど腕と手を透かして、視界を遮らないようにする */
   minOpacity: 0.28,       // いちばん透かしたときの不透明度
   fadeOverReach: 0.8,     // この長さまで伸ばすと最も透ける
-  sleeveRadius: 0.018     // 伸びた袖の太さ
+  /* 見た目：素肌の腕。画面の外の肩から手首までつなぎ、どこまでも伸びているように見せる */
+  skinRadius: 0.032,      // 腕の太さ
+  beyondShoulder: 1.5,    // 肩よりさらに奥（画面の外）まで腕を延ばす長さ
+  leftShoulder: [-0.3, -0.42, -0.14] // 左手の肩の位置（カメラ基準）
 });
 
 export const CPU = Object.freeze({ rememberChance: 0.78 });

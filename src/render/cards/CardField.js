@@ -14,7 +14,7 @@ export class CardField {
   #views = new Map();
   #hovered = null;
 
-  constructor({ scene, textures, layout, driftFactory, travelFactory, motion, cardSize, knockDrag, random = Math.random }) {
+  constructor({ scene, textures, layout, driftFactory, travelFactory, motion, cardSize, knockDrag, viewer, random = Math.random }) {
     this.scene = scene;
     this.travelFactory = travelFactory;
     this.knockDrag = knockDrag;
@@ -23,6 +23,7 @@ export class CardField {
     this.driftFactory = driftFactory;
     this.motion = motion;
     this.random = random;
+    this.viewer = viewer;
     this.geometry = new THREE.PlaneGeometry(cardSize.width, cardSize.height);
     this.bounds = layout.bounds;
   }
@@ -51,6 +52,7 @@ export class CardField {
           home: this.scene,
           bounds: this.bounds,
           motion: this.motion,
+          viewer: this.viewer,
           spinScale: difficulty.spinScale,
           knockDrag: this.knockDrag,
           random
@@ -95,9 +97,12 @@ export class CardField {
     this.#views.clear();
   }
 
-  /** 配るときは定位置の少し上から降らせる */
+  /** 配るときは定位置の少し上から、うら面をこちらへ向けて降らせる */
   #dropFromAbove(view, anchor, random) {
-    view.object.position.copy(anchor).add(new THREE.Vector3(0, 3 + random() * 2, 0));
-    view.object.rotation.set(random() * TAU, random() * TAU, 0);
+    const obj = view.object;
+    obj.position.copy(anchor).add(new THREE.Vector3(0, 3 + random() * 2, 0));
+    obj.lookAt(this.viewer);          // +Z（おもて面）を見る人へ向けてから
+    obj.rotateY(Math.PI);             // 裏返す
+    obj.rotateZ(random() * TAU);
   }
 }

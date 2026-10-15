@@ -30,6 +30,14 @@
 <div id="contactHint" class="contact-hint" role="status" hidden>
   <span class="contact-dot" aria-hidden="true"></span>手のひらがカードに触れています<span class="contact-action">左クリックでめくる</span>
 </div>
+<div id="tutorial" class="tutorial" role="region" aria-label="チュートリアル" hidden>
+  <div class="eyebrow" id="tutorialProgress"></div>
+  <p class="tutorial-text" id="tutorialText" aria-live="polite"></p>
+  <div class="tutorial-actions">
+    <button class="btn" type="button" id="tutorialFinish" hidden>ゲームをはじめる</button>
+    <button class="btn ghost tutorial-skip" type="button" id="tutorialSkip">スキップ<small>遊んだことがある方はこちら</small></button>
+  </div>
+</div>
 <div id="help" hidden>カードをクリック（タップ）でめくる ・ ドラッグか矢印キーで見回す ・ Esc で一時停止</div>
 
 <div class="overlay" id="menu" hidden>

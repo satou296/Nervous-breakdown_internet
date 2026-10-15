@@ -8,3 +8,5 @@ monitoring/.env
 !.env.example
 *.pem
 *.key
+test-results/
+playwright-report/

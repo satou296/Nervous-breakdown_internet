@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## コマンド
 
-リポジトリ直下で実行。Node.js 20 以上。依存は `ws` のみで、ビルド・lint・型チェックの工程は無い（ブラウザは `src/` の ES モジュールをそのまま読む）。
+リポジトリ直下で実行。Node.js 20 以上。依存は `ws` のみ（開発用に E2E の `@playwright/test`）で、ビルド・lint・型チェックの工程は無い（ブラウザは `src/` の ES モジュールをそのまま読む）。
 
 ```bash
 npm install
@@ -20,6 +20,8 @@ npm run dev                    # node --watch で起動（サーバー側の変�
 npm test                       # node --test tests/*.mjs（ブラウザ不要）
 node --test tests/domain.test.mjs                       # 1ファイルだけ
 node --test --test-name-pattern="ペア" tests/*.mjs       # テスト名で絞る
+npx playwright install chromium   # 初回だけ（E2E 用のブラウザ）
+npm run test:e2e               # 実際のブラウザでゲームを動かす確認（サーバーも自動で起動。e2e/）
 docker compose up --build      # 本番（Render）と同じコンテナ
 python3 -m http.server 8000    # 画面だけ（オンライン対戦なしの静的配信）
 ```
@@ -74,7 +76,18 @@ server/index.js（サーバー側のコンポジションルート）
 
 `monitoring/` は、自分のパソコンで動かす監視用の Docker 一式（Zabbix 7.0＋Grafana。Loki は Grafana Cloud）で、ゲーム本体のイメージには入らない。`/api/stats` の項目や記録の `event` を足す／変えるときは、`monitoring/zabbix/template_nervous_breakdown_internet.yaml`（項目とトリガー）、`monitoring/grafana/dashboards/overview.json`（項目名とホスト名 `nervous-breakdown-internet` で探す）、`docs/MONITORING.md` の表をそろえて直す。合言葉は `monitoring/.env`（git 管理外）にだけ置く。
 
+### チュートリアル
+
+URL を開くと、毎回まずチュートリアル（`GAME_MODES.tutorial`：決まった6枚を1人でめくる本物のゲーム）が始まる。`TutorialGuide`（`src/app/tutorial/`、DOM 非依存）がルールのイベントから説明の段階を決め、`TutorialScreen` が表示する。スキップ／完了で、URL を開いたときに本来出す画面（招待URLなら参加画面、それ以外はスタート画面）へ進む。
+
+### カードと手の見た目
+
+- カードは本物と同じく、おもて面（+Z）に数字、うら面（-Z）に模様。浮遊中は `FloatBehavior` がうら面をプレイヤー（`viewer`）へ向けたまま面内で回し、傾きを `MOTION.float.maxTilt`（π/2 未満）に抑えて、おもて面を見せない。浮遊中に裏返る動きを入れない。
+- 手は素手。腕は `BareArm` が画面の外の肩から前腕までつなぎ、どこまでも続いて見えるようにしている。
+
 ### テスト
+
+**main へのマージは、`npm test` と `npm run test:e2e` が両方通ってから**（GitHub Actions の `unit`・`e2e` ジョブ）。E2E（`e2e/game.spec.mjs`）はヘッドレス Chromium で、チュートリアルを最後まで進める・スキップ・ゲーム開始・達人の腕・招待URL を確かめる。
 
 `node:test` で、時間は偽のスケジューラ／時計を注入して進める（`tests/online.test.mjs` の `FakeScheduler`）。`server/index.js` は直接実行時だけ listen し、テストは `createGameServer()` で実サーバーを立てて WebSocket 2接続で通す。時刻や乱数に依存するクラスは `now`・`random`・`scheduler` を引数で受け取る形にそろえる。
 

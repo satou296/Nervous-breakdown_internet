@@ -1,17 +1,16 @@
 import { THREE } from '../../lib/three.js';
 import { FINGER_SHAPES, THUMB_SHAPE } from './HandPoses.js';
 
+const FOREARM_LENGTH = 0.3;
+
 /**
- * ポーズ定義から手と前腕の3Dモデルを組み立てる。
+ * ポーズ定義から素手と前腕の3Dモデルを組み立てる（袖や手袋は付けない）。
+ * 前腕の根元に目印（userData.forearmEnd）を置き、そこから先の腕は BareArm が肩まで描く。
  * 座標系：指先が +Z、手のひらが -Y、親指が +X（右手）。左手は mirror=true で作る。
  */
 export class HandModelFactory {
-  constructor({
-    skin = new THREE.MeshStandardMaterial({ color: 0xb97a58, roughness: 0.62 }),
-    sleeve = new THREE.MeshStandardMaterial({ color: 0x28324a, roughness: 0.92 }),
-    cuff = new THREE.MeshStandardMaterial({ color: 0x3a4766, roughness: 0.85 })
-  } = {}) {
-    this.materials = { skin, sleeve, cuff };
+  constructor({ skin = new THREE.MeshStandardMaterial({ color: 0xb97a58, roughness: 0.62 }) } = {}) {
+    this.materials = { skin };
   }
 
   create(pose, { mirror = false } = {}) {
@@ -28,6 +27,8 @@ export class HandModelFactory {
     hand.userData.palm = this.#palmCenter();
     hand.add(hand.userData.palm);
     hand.add(...this.#forearm());
+    hand.userData.forearmEnd = this.#forearmEnd();
+    hand.add(hand.userData.forearmEnd);
     if (mirror) hand.scale.x = -1;
     return hand;
   }
@@ -87,16 +88,20 @@ export class HandModelFactory {
   }
 
   #forearm() {
-    const { skin, sleeve, cuff } = this.materials;
     const wrist = this.#ellipsoid(0.036, 0.024, 0.03);
-    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.043, 0.3, 20), skin);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, FOREARM_LENGTH, 20), this.materials.skin);
     arm.rotation.x = Math.PI / 2;
-    arm.position.z = -0.15;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.011, 10, 28), cuff);
-    ring.position.z = -0.22;
-    const cloth = new THREE.Mesh(new THREE.CylinderGeometry(0.056, 0.064, 0.55, 24), sleeve);
-    cloth.rotation.x = Math.PI / 2;
-    cloth.position.z = -0.5;
-    return [wrist, arm, ring, cloth];
+    arm.position.z = -FOREARM_LENGTH / 2;
+    // 肩へ続く腕との継ぎ目を丸く隠す
+    const joint = this.#ellipsoid(0.04, 0.04, 0.04);
+    joint.position.z = -FOREARM_LENGTH;
+    return [wrist, arm, joint];
+  }
+
+  /** 前腕の根元（肩へ続く腕の端） */
+  #forearmEnd() {
+    const marker = new THREE.Group();
+    marker.position.z = -FOREARM_LENGTH;
+    return marker;
   }
 }

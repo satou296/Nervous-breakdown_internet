@@ -51,12 +51,9 @@ export class LocalGameSession extends EventEmitter {
   get usesHover() { return this.#selection.usesHover; }
 
   start() {
-    const { deckFactory, deckOptions, matchRule, timing } = this.s;
-    const maxRank = deckOptions[this.deckSize];
-    if (!maxRank) throw new Error(`選べない枚数です: ${this.deckSize}`);
-
+    const { matchRule, timing } = this.s;
     this.#game = new ConcentrationGame({
-      cards: deckFactory.create(maxRank),
+      cards: this.#createDeck(),
       players: createPlayers(this.mode),
       matchRule,
       stats: new GameStats(() => this.s.clock.nowMs)
@@ -175,6 +172,15 @@ export class LocalGameSession extends EventEmitter {
   }
 
   /* ---------------- 補助 ---------------- */
+
+  /** 遊び方が札を決めていればその札で、なければ選んだ枚数で山札を作る */
+  #createDeck() {
+    const { deckFactory, deckOptions } = this.s;
+    if (this.mode.deck) return deckFactory.createFrom(this.mode.deck);
+    const maxRank = deckOptions[this.deckSize];
+    if (!maxRank) throw new Error(`選べない枚数です: ${this.deckSize}`);
+    return deckFactory.create(maxRank);
+  }
 
   /** CPU が狙っているカードを少し光らせてから選ぶ */
   #aimAt(card, done) {

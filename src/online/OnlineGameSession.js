@@ -222,7 +222,7 @@ export class OnlineGameSession extends EventEmitter {
     for (const m of snapshot.matched) {
       const card = this.#presenter.cardById(m.cardId);
       card.reveal(m.rank, m.suit);
-      this.#presenter.viewOf(card).showFaceOnBothSides();
+      this.#presenter.viewOf(card).showFace();
       this.#presenter.collect([card], m.owner);
     }
     for (const s of snapshot.selection) {

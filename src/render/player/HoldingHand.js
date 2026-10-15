@@ -10,8 +10,9 @@ export class HoldingHand {
   #roll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI + 0.42);
   #gazeTarget = new THREE.Vector3(-0.1, -0.33, -1.3);
 
-  constructor({ camera, model, basePosition, scale = 0.9 }) {
+  constructor({ camera, model, basePosition, shoulderPosition, scale = 0.9 }) {
     this.base = basePosition.clone();
+    this.shoulder = shoulderPosition.clone(); // 腕の付け根（BareArm が使う）
     this.root = new THREE.Group();
     this.root.add(model);
     this.root.scale.setScalar(scale);

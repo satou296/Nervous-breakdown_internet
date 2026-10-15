@@ -41,7 +41,7 @@ import { HAND_POSES } from './render/player/HandPoses.js';
 import { PointingHand } from './render/player/PointingHand.js';
 import { HoldingHand } from './render/player/HoldingHand.js';
 import { PileFactory } from './render/piles/PileFactory.js';
-import { StretchArm } from './render/player/StretchArm.js';
+import { BareArm } from './render/player/BareArm.js';
 import { ArmReach } from './physics/ArmReach.js';
 import { PalmContactSensor } from './physics/PalmContactSensor.js';
 import { ArmCollisionResolver } from './physics/ArmCollisionResolver.js';
@@ -63,6 +63,7 @@ import { PauseScreen } from './ui/PauseScreen.js';
 import { PauseButton } from './ui/PauseButton.js';
 import { ReachMeter } from './ui/ReachMeter.js';
 import { ContactIndicator } from './ui/ContactIndicator.js';
+import { TutorialScreen } from './ui/TutorialScreen.js';
 
 import { App } from './app/App.js';
 import { LocalGameSession } from './app/session/LocalGameSession.js';
@@ -72,6 +73,7 @@ import { ViewportBinder } from './app/ViewportBinder.js';
 import { PauseController } from './app/PauseController.js';
 import { CardSelectionFactory } from './app/selection/CardSelectionMethods.js';
 import { ContactFeedback } from './app/ContactFeedback.js';
+import { TutorialGuide } from './app/tutorial/TutorialGuide.js';
 import { waitForFont } from './app/fontLoader.js';
 
 import { ServerMessage } from './net/Protocol.js';
@@ -102,20 +104,25 @@ async function main() {
   new CasinoTable({ scene, textureFactory, table: TABLE });
   const dust = new DustParticles({ scene });
 
-  /* ---- 手 ---- */
+  /* ---- 手（素手。腕は画面の外の肩からどこまでも続いて見える） ---- */
   // 右手は伸ばすと透かすので、左手とは別の材質で作る
   const rightHandModels = new HandModelFactory();
   const leftHandModels = new HandModelFactory();
+  const rightHandModel = rightHandModels.create(HAND_POSES.point);
+  const leftHandModel = leftHandModels.create(HAND_POSES.open, { mirror: true });
   const pointingHand = new PointingHand({
     camera: rig.camera,
-    model: rightHandModels.create(HAND_POSES.point),
+    model: rightHandModel,
     basePosition: new THREE.Vector3(0.21, -0.25, -0.44),
     shoulderPosition: new THREE.Vector3(...ARM.shoulder)
   });
-  const stretchArm = new StretchArm({ camera: rig.camera, hand: pointingHand, radius: ARM.sleeveRadius });
+  const rightArm = new BareArm({
+    camera: rig.camera, hand: pointingHand, forearmEnd: rightHandModel.userData.forearmEnd,
+    radius: ARM.skinRadius, beyondShoulder: ARM.beyondShoulder, material: rightHandModels.materials.skin
+  });
   const armVisibility = new ArmVisibility({
     hand: pointingHand,
-    materials: [...Object.values(rightHandModels.materials), stretchArm.material],
+    materials: Object.values(rightHandModels.materials),
     minOpacity: ARM.minOpacity,
     fadeOverReach: ARM.fadeOverReach
   });
@@ -123,8 +130,13 @@ async function main() {
   pointingHand.setReachProvider(() => armReach.length);
   const holdingHand = new HoldingHand({
     camera: rig.camera,
-    model: leftHandModels.create(HAND_POSES.open, { mirror: true }),
-    basePosition: new THREE.Vector3(-0.27, -0.28, -0.48)
+    model: leftHandModel,
+    basePosition: new THREE.Vector3(-0.27, -0.28, -0.48),
+    shoulderPosition: new THREE.Vector3(...ARM.leftShoulder)
+  });
+  const leftArm = new BareArm({
+    camera: rig.camera, hand: holdingHand, forearmEnd: leftHandModel.userData.forearmEnd,
+    radius: ARM.skinRadius, beyondShoulder: ARM.beyondShoulder, material: leftHandModels.materials.skin
   });
 
   /* ---- カード ---- */
@@ -141,7 +153,8 @@ async function main() {
     layout: floatLayout,
     driftFactory: new DriftFactory(),
     travelFactory: new AnchorTravelFactory({ layout: floatLayout }),
-    knockDrag: ARM.knockDrag
+    knockDrag: ARM.knockDrag,
+    viewer: new THREE.Vector3(...CAMERA.position)
   });
   const picker = new CardPicker({ camera: rig.camera, field });
   const choreographer = new CardChoreographer({
@@ -228,7 +241,17 @@ async function main() {
       deckSize,
       services: sessionServices
     }),
-    createOnlineSession: start => new OnlineGameSession({ start, services: sessionServices, online: onlineServices })
+    createOnlineSession: start => new OnlineGameSession({ start, services: sessionServices, online: onlineServices }),
+    tutorialScreen: new TutorialScreen({
+      root: $('tutorial'), textEl: $('tutorialText'), progressEl: $('tutorialProgress'),
+      skipButton: $('tutorialSkip'), finishButton: $('tutorialFinish')
+    }),
+    tutorialGuide: new TutorialGuide(),
+    createTutorialSession: () => new LocalGameSession({
+      mode: getGameMode('tutorial'),
+      difficulty: getDifficulty(DEFAULT_DIFFICULTY_ID),
+      services: sessionServices
+    })
   });
 
   /* ---- フレームループ（登録順に更新される） ----
@@ -258,9 +281,10 @@ async function main() {
     .add(new HoverHighlighter({ pointer, picker, field, isEnabled: () => app.canHover(), cursorTarget: renderContext.canvas }))
     .add(gameplay)
     .add(pointingHand)
-    .add(stretchArm)
+    .add(rightArm)
     .add(armVisibility)
     .add(holdingHand)
+    .add(leftArm)
     .add(remotePlayers)
     .add(renderContext)
     .start();

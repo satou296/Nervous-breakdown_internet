@@ -11,10 +11,10 @@ export class CardChoreographer {
     this.motion = motion;
   }
 
-  /** 両面を表にして、中央に大きく見せてから画面下部の slot 番目へ寄せる */
+  /** 表向きにして、中央に大きく見せてから画面下部の slot 番目へ寄せる */
   reveal(view, slotIndex) {
     const r = this.motion.reveal;
-    view.showFaceOnBothSides();
+    view.showFace();
     view.play(new SequenceBehavior([
       new PoseTween({
         pose: this.stage.presentPose(),
@@ -34,9 +34,9 @@ export class CardChoreographer {
     ]));
   }
 
-  /** 両面を裏に戻して、ふたたび宙を漂わせる */
+  /** 裏向きに戻して、ふたたび宙を漂わせる（うら面をこちらへ向け直す） */
   returnToAir(view) {
-    view.showBackOnBothSides();
+    view.showBack();
     view.float({ fromRest: true });
   }
 

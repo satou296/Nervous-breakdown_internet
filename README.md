@@ -31,11 +31,17 @@ GitHub Pages など、ファイルを置くだけの場所でも動きます。�
 python3 -m http.server 8000      # → http://localhost:8000
 ```
 
+開くと、まずチュートリアル（6枚で神経衰弱の流れを体験）が始まります。遊んだことがある人は「スキップ」で、いつもの最初の画面へ進めます。
+
 ### テスト
 
 ```bash
-npm test        # ルール・物理・サーバー（実際に起動して2人で通信）まで、ブラウザ不要
+npm test                         # ルール・物理・サーバー（実際に起動して2人で通信）まで、ブラウザ不要
+npx playwright install chromium  # 初回だけ
+npm run test:e2e                 # 実際のブラウザでゲームを動かして確認（チュートリアル・スキップ・ゲーム開始など）
 ```
+
+main へのマージは、GitHub Actions の `unit` と `e2e` の両方が通ってから行います。
 
 本番への公開手順は [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md)、本番の監視（Zabbix・Loki・Grafana）は [docs/MONITORING.md](docs/MONITORING.md)、監視を自分のパソコンの Docker で動かす手順は [docs/MONITORING_DOCKER.md](docs/MONITORING_DOCKER.md) を見てください。
 

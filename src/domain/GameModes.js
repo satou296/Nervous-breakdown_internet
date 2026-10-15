@@ -1,5 +1,6 @@
 import { Player, PlayerKind } from './Player.js';
 import { TEXT } from '../config/strings.js';
+import { Suit } from './Suit.js';
 
 /**
  * 遊び方の定義。座席（プレイヤー）と、取ったカードの置き場所（pile）を宣言的に持つ。
@@ -7,6 +8,7 @@ import { TEXT } from '../config/strings.js';
  *
  * pile: 'hand'  … 自分の左手の上に積む
  *       'table' … テーブルの奥に積む
+ * deck: 使う札を決めておく遊び方だけが持つ（省略すると、選んだ枚数の山札を使う）
  */
 export const GAME_MODES = Object.freeze({
   solo: Object.freeze({
@@ -25,6 +27,19 @@ export const GAME_MODES = Object.freeze({
     announceTurns: true,
     showClock: false,
     showTurnCount: false
+  }),
+  /** 最初に開くチュートリアル：エース・数札・絵札を1ペアずつ、計6枚 */
+  tutorial: Object.freeze({
+    id: 'tutorial',
+    seats: [{ name: TEXT.you, kind: PlayerKind.Human, pile: 'hand' }],
+    announceTurns: false,
+    showClock: false,
+    showTurnCount: false,
+    deck: Object.freeze([
+      { rank: 1, suit: Suit.Spade }, { rank: 1, suit: Suit.Heart },
+      { rank: 7, suit: Suit.Diamond }, { rank: 7, suit: Suit.Club },
+      { rank: 13, suit: Suit.Heart }, { rank: 13, suit: Suit.Spade }
+    ].map(Object.freeze))
   }),
   duo: Object.freeze({
     id: 'duo',
