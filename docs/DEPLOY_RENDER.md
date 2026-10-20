@@ -175,7 +175,7 @@ index.html  package.json  README.md  render.yaml
 | Dockerfile Path | `./Dockerfile` |
 | Instance Type | **Free** |
 | Health Check Path（Advanced の中） | `/health` |
-| Auto-Deploy | **Yes** |
+| Auto-Deploy | **Off**（本番への反映は手動で行う。下の「更新するとき」） |
 | Environment Variables | `TURN_TIMEOUT_SEC` = `45`（任意） |
 
 ---
@@ -248,9 +248,16 @@ index.html  package.json  README.md  render.yaml
 
 ## 更新するとき
 
-1. 新しいファイルを GitHub にアップロードします（手順2と同じ）。
-2. Render が自動でビルドして入れ替えます（Logs で確認できます）。
-3. **入れ替えの瞬間、進行中の部屋はなくなります。** 遊んでいない時間に更新するのがおすすめです。
+main に push（マージ）しても、本番には**自動では反映されません**（`render.yaml` の `autoDeployTrigger: off`）。
+入れ替えの瞬間に進行中の部屋がなくなるため、反映する時を自分で選べるようにしています。
+
+1. 変更は作業ブランチで行い、GitHub Actions の `unit` と `e2e` が両方通ってから main にマージします。
+2. 本番と同じコンテナで動作を確かめます：`docker compose up --build` → http://localhost:8080 を2つのブラウザ（片方はシークレットウィンドウ）で開き、オンライン対戦まで試す → `docker compose down`。
+3. 遊んでいる人がいない時間に、Render のサービス画面右上の **Manual Deploy → Deploy latest commit** を押します。
+4. Logs に `server_started` が出て、公開 URL の `/health` が `{"status":"ok",...}` を返せば完了です。
+
+> 以前の設定（Auto-Deploy が Yes）で作ったサービスは、`render.yaml` を含む変更を main にマージしたときに Blueprint の同期で Off に切り替わります。
+> 先に止めておきたい場合は、Render のサービス画面 → **Settings → Build & Deploy → Auto-Deploy** を **Off** にします。
 
 ## うまくいかないとき
 

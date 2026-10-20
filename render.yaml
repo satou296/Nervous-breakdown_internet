@@ -12,7 +12,9 @@ services:
     region: singapore          # 日本から近い地域
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
-    autoDeploy: true           # main ブランチに push すると自動で反映
+    # main に push しても自動では反映しない。本番への反映は Render の画面の「Manual Deploy」で行う
+    # （入れ替えの瞬間に進行中の部屋が消えるので、遊んでいる人がいない時間を選んで出す）
+    autoDeployTrigger: "off"   # 引用符で囲む（YAML 1.1 の読み手は off を真偽値の false と読むため）
     # 部屋の情報はサーバーのメモリにあるので、台数は1台で動かす
     numInstances: 1
     envVars:
