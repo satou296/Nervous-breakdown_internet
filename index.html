@@ -28,7 +28,14 @@
   <span class="reach-label">腕</span><span class="reach-track"><span class="reach-fill" id="reachFill"></span></span><span class="reach-keys">W 伸ばす / S 縮める</span>
 </div>
 <div id="contactHint" class="contact-hint" role="status" hidden>
-  <span class="contact-dot" aria-hidden="true"></span>手のひらがカードに触れています<span class="contact-action">左クリックでめくる</span>
+  <span class="contact-dot" aria-hidden="true"></span>手のひらがカードに触れています<span class="contact-action">左クリック（タップ）でめくる</span>
+</div>
+<div id="reachPad" class="reach-pad" hidden>
+  <div class="reach-pad-arm">
+    <button class="pad-btn" type="button" id="reachExtend">伸ばす</button>
+    <button class="pad-btn" type="button" id="reachRetract">縮める</button>
+  </div>
+  <button class="pad-btn pad-flip" type="button" id="reachFlip">めくる</button>
 </div>
 <div id="tutorial" class="tutorial" role="region" aria-label="チュートリアル" hidden>
   <div class="eyebrow" id="tutorialProgress"></div>
