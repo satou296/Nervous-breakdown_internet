@@ -21,6 +21,11 @@ function collectErrors(page) {
   return errors;
 }
 
+/** 腕の長さメーターの値（0〜100） */
+async function reachLevel(page) {
+  return Number(await page.locator('#reachMeter').getAttribute('aria-valuenow'));
+}
+
 async function openAndWaitTutorial(page, path = '/') {
   await page.goto(path);
   await expect(page.locator('#loading')).toBeHidden({ timeout: 30_000 });
@@ -99,13 +104,12 @@ test('達人モードでは素手の腕が伸ばせる', async ({ page }) => {
   await page.locator('label[for="d-expert"]').click();
   await page.locator('#startBtn').click();
   await expect(page.locator('#reachMeter')).toBeVisible();
-  await page.waitForTimeout(1200);
   await page.mouse.move(700, 330);
+  // CI のソフトウェア描画はコマ送りが遅く、ゲーム内時計（1コマ最大0.25秒）で進む配り終えまでの時間がまちまち。
+  // 決め打ちの時間ではなく、腕が伸び始めるまで W を押し続ける
   await page.keyboard.down('KeyW');
-  await page.waitForTimeout(700);
+  await expect.poll(() => reachLevel(page), { timeout: 30_000 }).toBeGreaterThan(0);
   await page.keyboard.up('KeyW');
-  const now = Number(await page.locator('#reachMeter').getAttribute('aria-valuenow'));
-  expect(now).toBeGreaterThan(0);
   await page.screenshot({ path: 'test-results/expert-reach.png' });
   expect(errors).toEqual([]);
 });
