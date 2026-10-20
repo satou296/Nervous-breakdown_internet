@@ -48,7 +48,7 @@ server/index.js（サーバー側のコンポジションルート）
 
 - **`src/domain`・`src/ai`・`src/core`・`src/physics`・`src/net`・`src/config` は Node.js でもそのまま動かす**。サーバーとテストが直接 import するので、ここに `window`・DOM・three.js への依存を入れない。
 - **依存性の注入**：各クラスは依存先を自分で `new` せず、`main.js`（サーバーは `server/index.js` の `createGameServer`）で組み立てて渡す。新しい部品を足したらここに配線する。
-- **three.js は CDN の `<script>`（グローバル）で読み込み**、`src/lib/three.js` だけが `window.THREE` に触れる。他のモジュールは必ずそこから import する。
+- **three.js は同梱の `src/lib/vendor/three.min.js`（r149）を `<script>`（グローバル）で読み込み**、`src/lib/three.js` だけが `window.THREE` に触れる。他のモジュールは必ずそこから import する。
 - **調整値と文言は `src/config/GameConfig.js` と `src/config/strings.js` に集約**（マジックナンバー・直書き文字列を置かない）。難易度は `Difficulties.js`、遊び方は `domain/GameModes.js` に宣言的に定義し、メニューの選択肢は `index.html` 側にも足す。
 - 差し替え可能な振る舞いは Strategy＋Factory の `register()` で拡張する（`DriftFactory`・`AnchorTravelFactory`・`PileFactory`・`CardSelectionFactory`、`MatchRule`、`CpuStrategy`）。
 

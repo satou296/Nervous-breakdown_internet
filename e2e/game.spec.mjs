@@ -13,7 +13,7 @@ function collectErrors(page) {
   page.on('pageerror', err => errors.push(err.message));
   page.on('console', msg => {
     if (msg.type() !== 'error') return;
-    // 外部（フォント・CDN）の一時的な読み込み失敗は、ゲームの不具合ではないので数えない
+    // 外部（フォント）の一時的な読み込み失敗は、ゲームの不具合ではないので数えない
     const external = !(msg.location().url ?? '').startsWith('http://localhost');
     if (external && msg.text().startsWith('Failed to load resource')) return;
     errors.push(msg.text());
@@ -116,4 +116,19 @@ test('招待URLで開いたときも、チュートリアルのスキップ後�
   await expect(page.locator('#lobby')).toBeVisible();
   await expect(page.locator('#lobbyFormTitle')).toContainText('ABCDE');
   await expect(page.locator('#menu')).toBeHidden();
+});
+
+test('スクリプトはすべてこのサーバーから読み、外部の CDN に頼らない', async ({ page }) => {
+  const external = [];
+  page.on('request', req => {
+    if (req.resourceType() === 'script' && !req.url().startsWith('http://localhost')) external.push(req.url());
+  });
+  await openAndWaitTutorial(page);
+  expect(external).toEqual([]);
+});
+
+test('three.js が読み込めないときは、読み込み中のまま止まらず案内を出す', async ({ page }) => {
+  await page.route('**/src/lib/vendor/three.min.js', route => route.abort());
+  await page.goto('/');
+  await expect(page.locator('#loading')).toContainText('読み込めませんでした', { timeout: 30_000 });
 });

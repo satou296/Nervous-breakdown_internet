@@ -14,7 +14,7 @@
 </head>
 <body>
 <div id="stage"></div>
-<div id="loading">カードを用意しています…</div>
+<div id="loading" data-failed-text="ゲームを読み込めませんでした。通信の状態を確かめて、ページを再読み込みしてください。">カードを用意しています…</div>
 
 <div id="hud" hidden>
   <div class="hud-block" id="turn"></div>
@@ -142,7 +142,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="src/bootGuard.js"></script>
+<!-- three.js r149 は同梱（外部の CDN が止まっても遊べるように） -->
+<script src="src/lib/vendor/three.min.js"></script>
 <script type="module" src="src/main.js"></script>
 </body>
 </html>
