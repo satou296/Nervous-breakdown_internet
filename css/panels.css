@@ -46,6 +46,7 @@ legend { font-size: .75rem; letter-spacing: .14em; color: var(--brass); margin-b
 .btn:active { transform: translateY(1px); }
 .btn.ghost { background: transparent; color: var(--ink); }
 .btn-block { width: 100%; }
+.btn-block.menu-sub { margin-top: 8px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
 .row .btn { flex: 1 1 140px; }
 

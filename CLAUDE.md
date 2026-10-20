@@ -78,7 +78,7 @@ server/index.js（サーバー側のコンポジションルート）
 
 ### チュートリアル
 
-URL を開くと、毎回まずチュートリアル（`GAME_MODES.tutorial`＋`TUTORIAL_DIFFICULTY`：決まった6枚を1人でクリックでめくる本物のゲーム）が始まる。`TutorialGuide`（`src/app/tutorial/`、DOM 非依存）がルールのイベントから説明の段階を決め、`TutorialScreen` が表示する。スキップ／完了で、URL を開いたときに本来出す画面（招待URLなら参加画面、それ以外はスタート画面）へ進む。
+初めて URL を開いたときだけ、まずチュートリアル（`GAME_MODES.tutorial`＋`TUTORIAL_DIFFICULTY`：決まった6枚を1人でクリックでめくる本物のゲーム）が始まる。見終えたか（スキップを含む）は `TutorialRecord` が localStorage に覚え、2回目以降と招待URL（`?room=`）ではすぐ最初の画面へ進む。スタート画面の「遊び方を見る」からいつでも見直せる。`TutorialGuide`（`src/app/tutorial/`、DOM 非依存）がルールのイベントから説明の段階を決め、`TutorialScreen` が表示する。スキップ／完了で、URL を開いたときに本来出す画面（招待URLなら参加画面、それ以外はスタート画面）へ進む。
 
 ### カードと手の見た目
 
