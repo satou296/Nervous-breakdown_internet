@@ -14,18 +14,24 @@ export class Room {
   #hostIndex = 0;
   #state = RoomState.Lobby;
   #match = null;
+  /** 待合室で切断した席 → 席を空ける予約の取り消し */
+  #pendingRelease = new Map();
 
   /**
    * @param {object} p
    * @param {string} p.code
    * @param {{ difficultyId: string, deckSize: number }} p.settings
    * @param {(names: string[], settings) => OnlineMatch} p.createMatch
+   * @param {{ after(ms, task): () => void, cancelAll(): void }} p.scheduler
+   * @param {number} p.lobbySeatGraceMs  待合室で切断した人の席を空けるまでの時間
    * @param {(room: Room) => void} p.onVacancyChange  全員いなくなった／誰か戻ったときに呼ぶ
    */
-  constructor({ code, settings, createMatch, onVacancyChange = () => {} }) {
+  constructor({ code, settings, createMatch, scheduler, lobbySeatGraceMs, onVacancyChange = () => {} }) {
     this.code = code;
     this.settings = Object.freeze({ ...settings });
     this.createMatch = createMatch;
+    this.scheduler = scheduler;
+    this.lobbySeatGraceMs = lobbySeatGraceMs;
     this.onVacancyChange = onVacancyChange;
   }
 
@@ -74,12 +80,16 @@ export class Room {
     this.onVacancyChange(this);
   }
 
-  /** 接続が切れた。席は残し、token を持っていれば戻れる */
+  /**
+   * 接続が切れた。席は残し、token を持っていれば戻れる。
+   * 待合室では、しばらく戻らなければ席を空ける（ホストなら次の人がホストになり、残った人で始められる）
+   */
   disconnect(connection) {
     const seat = this.#seatOf(connection);
     if (!seat) return;
     seat.detach();
     this.#match?.setConnected(seat.index, false);
+    if (this.#state === RoomState.Lobby) this.#scheduleRelease(seat);
     this.#broadcastStatus(seat);
     this.#broadcastRoom();
     this.onVacancyChange(this);
@@ -114,6 +124,8 @@ export class Room {
   }
 
   dispose() {
+    this.scheduler.cancelAll();
+    this.#pendingRelease.clear();
     this.#match?.dispose();
     this.#match = null;
     this.#seats.forEach(s => { if (s.connection) s.connection.room = null; });
@@ -122,6 +134,7 @@ export class Room {
   /* ---------------- 内部 ---------------- */
 
   #rejoin(seat, connection) {
+    this.#cancelRelease(seat);
     seat.attach(connection);
     connection.room = this;
     seat.send(ServerMessage.RoomJoined, { code: this.code, you: { index: seat.index, token: seat.token }, room: this.info() });
@@ -138,6 +151,8 @@ export class Room {
     if (seat.index !== this.#hostIndex) throw new RoomError(ErrorCode.NotHost, '開始できるのは部屋を作った人だけです');
     if (this.#state === RoomState.Playing) throw new RoomError(ErrorCode.MatchInProgress, 'すでに対戦中です');
     this.#seats.filter(s => !s.connected).forEach(s => this.#removeSeat(s));
+    this.#pendingRelease.forEach(cancel => cancel());
+    this.#pendingRelease.clear();
     if (this.#seats.length < LIMITS.minPlayers) throw new RoomError(ErrorCode.NotEnoughPlayers, `${LIMITS.minPlayers}人以上そろうと始められます`);
 
     this.#match = this.createMatch(this.#seats.map(s => s.name), this.settings);
@@ -168,7 +183,25 @@ export class Room {
     this.#broadcastRoom();
   }
 
+  #scheduleRelease(seat) {
+    this.#cancelRelease(seat);
+    const cancel = this.scheduler.after(this.lobbySeatGraceMs, () => {
+      this.#pendingRelease.delete(seat);
+      if (seat.connected || this.#state !== RoomState.Lobby || !this.#seats.includes(seat)) return;
+      this.#removeSeat(seat);
+      this.#broadcastRoom();
+      this.onVacancyChange(this);
+    });
+    this.#pendingRelease.set(seat, cancel);
+  }
+
+  #cancelRelease(seat) {
+    this.#pendingRelease.get(seat)?.();
+    this.#pendingRelease.delete(seat);
+  }
+
   #removeSeat(seat) {
+    this.#cancelRelease(seat);
     const removed = seat.index;
     this.#seats = this.#seats.filter(s => s !== seat);
     this.#seats.forEach((s, i) => { s.index = i; });
