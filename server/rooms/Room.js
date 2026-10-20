@@ -31,11 +31,19 @@ export class Room {
 
   get state() { return this.#state; }
   get isVacant() { return this.#seats.every(s => !s.connected); }
+  /** 誰もいなくて、戻れる人（token を持つ席）もいない。待つ意味がないのですぐ片付けてよい */
+  get isAbandoned() { return this.#seats.every(s => !s.connected && !s.token); }
   get connectedCount() { return this.#seats.filter(s => s.connected).length; }
 
   /* ---------------- 出入り ---------------- */
 
   join(connection, { name, token = null }) {
+    // すでにこの部屋に座っている接続は、席を増やさず今の席を知らせ直すだけ（1接続で席を埋められないように）
+    const current = this.#seatOf(connection);
+    if (current) {
+      current.send(ServerMessage.RoomJoined, { code: this.code, you: { index: current.index, token: current.token }, room: this.info() });
+      return;
+    }
     const returning = token ? this.#seats.find(s => s.token === token) : null;
     if (returning) return this.#rejoin(returning, connection);
     if (this.#state === RoomState.Playing) throw new RoomError(ErrorCode.MatchInProgress, 'この部屋は対戦中です');

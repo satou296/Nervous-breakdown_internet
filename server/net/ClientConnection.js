@@ -17,16 +17,18 @@ export const ConnectionEvent = Object.freeze({
 export class ClientConnection extends EventEmitter {
   #socket;
   #limiter;
+  #logger;
   #alive = true;
 
   /** 入っている部屋（Room が設定する） */
   room = null;
 
-  constructor(socket, { rateLimit }) {
+  constructor(socket, { rateLimit, logger = console }) {
     super();
     this.id = randomUUID();
     this.#socket = socket;
     this.#limiter = new RateLimiter(rateLimit);
+    this.#logger = logger;
     socket.on('message', (data, isBinary) => this.#onMessage(data, isBinary));
     socket.on('pong', () => { this.#alive = true; });
     socket.on('close', () => this.emit(ConnectionEvent.Closed));
@@ -66,8 +68,12 @@ export class ClientConnection extends EventEmitter {
       const payload = validateClientMessage(message.type, message.payload);
       this.emit(ConnectionEvent.Message, { type: message.type, payload });
     } catch (err) {
-      if (err instanceof ValidationError) this.sendError(ErrorCode.InvalidMessage, err.message);
-      else throw err;
+      if (err instanceof ValidationError) return this.sendError(ErrorCode.InvalidMessage, err.message);
+      // 思わぬエラーは投げ直さない（ws の受信処理の外へ出るとプロセスごと落ち、全部屋が消える）。
+      // 記録して、この接続だけを切る
+      this.#logger.error('connection_error', err);
+      this.sendError(ErrorCode.InvalidMessage, 'サーバーでエラーが起きました');
+      this.close();
     }
   }
 }

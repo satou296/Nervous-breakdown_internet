@@ -76,7 +76,7 @@ export const TUTORIAL_DIFFICULTY = Object.freeze({
 });
 
 export function getDifficulty(id) {
-  const difficulty = DIFFICULTIES[id];
+  const difficulty = Object.hasOwn(DIFFICULTIES, id) ? DIFFICULTIES[id] : null;
   if (!difficulty) throw new Error(`未知の難易度です: ${id}`);
   return difficulty;
 }

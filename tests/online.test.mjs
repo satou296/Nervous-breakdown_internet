@@ -146,6 +146,12 @@ test('入力の検証：知らない種類・壊れた値・長すぎる名前�
   const presence = validateClientMessage(ClientMessage.Presence, { dir: [3, 0, 4], reach: 99 });
   assert.ok(Math.abs(Math.hypot(...presence.dir) - 1) < 1e-9, '向きは長さ1に収める');
   assert.ok(presence.reach <= 9.5);
+  for (const type of ['__proto__', 'constructor', 'valueOf', 'toString']) {
+    assert.throws(() => validateClientMessage(type, {}), ValidationError, `${type} は知らない種類として断る`);
+  }
+  for (const bad of [{ difficultyId: 'constructor', deckSize: 20 }, { difficultyId: 'normal', deckSize: 'constructor' }, { difficultyId: 'normal', deckSize: '20' }]) {
+    assert.throws(() => validateClientMessage(ClientMessage.CreateRoom, { name: 'a', ...bad }), ValidationError);
+  }
   assert.equal(decode('not json'), null);
   assert.deepEqual(decode(encode('x', { a: 1 })), { type: 'x', payload: { a: 1 } });
 });
@@ -261,6 +267,50 @@ test('サーバー起動：部屋を作って招待で参加し、対戦を始�
 
     host.ws.close();
     back.ws.close();
+  } finally {
+    await server.close();
+  }
+});
+
+test('サーバー起動：おかしなメッセージや1接続からの連打で、サーバーを落としたり部屋・席を埋めたりできない', async () => {
+  const config = { ...loadServerConfig({ PORT: '0', LOG_LEVEL: 'silent' }), port: 0, maxRooms: 3 };
+  const server = createGameServer(config);
+  await server.listen();
+  const { port } = server.httpServer.address();
+  const roomCount = async () => (await fetch(`http://127.0.0.1:${port}/health`).then(r => r.json())).rooms;
+  try {
+    // Object.prototype にある名前の種類を送っても、エラーが返るだけでサーバーは動き続ける
+    const attacker = await connectClient(port);
+    for (const t of ['__proto__', 'valueOf', 'constructor']) {
+      attacker.ws.send(JSON.stringify({ t, d: {} }));
+      assert.equal((await attacker.next(ServerMessage.Error)).code, ErrorCode.InvalidMessage);
+    }
+
+    // 部屋を作っては抜けるのを繰り返しても、残るのは今いる1部屋だけ
+    for (let i = 0; i < 6; i++) {
+      attacker.send(ClientMessage.CreateRoom, { name: 'x', difficultyId: 'normal', deckSize: 20 });
+      await attacker.next(ServerMessage.RoomJoined);
+    }
+    assert.equal(await roomCount(), 1);
+    attacker.send(ClientMessage.LeaveRoom, {});
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(await roomCount(), 0, '誰も戻れない部屋はすぐ片付ける');
+
+    // 1接続から同じ部屋に何度参加しても席は1つ。友だちは入れる
+    const host = await connectClient(port);
+    host.send(ClientMessage.CreateRoom, { name: 'ホスト', difficultyId: 'normal', deckSize: 20 });
+    const { code } = await host.next(ServerMessage.RoomJoined);
+    for (let i = 0; i < 4; i++) {
+      attacker.send(ClientMessage.JoinRoom, { code, name: 'x' });
+      assert.equal((await attacker.next(ServerMessage.RoomJoined)).you.index, 1);
+    }
+    const friend = await connectClient(port);
+    friend.send(ClientMessage.JoinRoom, { code, name: '友だち' });
+    const joined = await friend.next(ServerMessage.RoomJoined);
+    assert.equal(joined.you.index, 2);
+    assert.equal(joined.room.players.length, 3);
+
+    [attacker, host, friend].forEach(c => c.ws.close());
   } finally {
     await server.close();
   }

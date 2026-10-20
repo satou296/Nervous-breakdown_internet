@@ -98,7 +98,7 @@ export function createGameServer(config = loadServerConfig()) {
   });
   const dispatcher = new MessageDispatcher({ rooms, logger });
   wss.on('connection', socket => {
-    const connection = new ClientConnection(socket, { rateLimit: config.rateLimit });
+    const connection = new ClientConnection(socket, { rateLimit: config.rateLimit, logger });
     connections.add(connection);
     metrics.count(Counter.Connections);
     logger.info('ws_connected', { connections: connections.size });
@@ -114,6 +114,7 @@ export function createGameServer(config = loadServerConfig()) {
 
   return {
     httpServer,
+    logger,
     listen: () => new Promise(resolve => httpServer.listen(config.port, config.host, () => {
       logger.info('server_started', { port: httpServer.address().port, lokiEnabled: Boolean(config.loki.url) });
       resolve();
@@ -143,4 +144,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
+  // 最後の安全網：思わぬ例外で落ちるときも、原因を記録に残してから終わる（Render が起動し直す）
+  const crash = async err => {
+    server.logger.error('uncaught_exception', err instanceof Error ? err : { message: String(err) });
+    await server.logger.close();
+    process.exit(1);
+  };
+  process.on('uncaughtException', crash);
+  process.on('unhandledRejection', crash);
 }

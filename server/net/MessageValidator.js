@@ -42,8 +42,9 @@ function roomCode(value) {
 /** 種類ごとに、受け取ってよい形かを確かめて、安全な形に整える */
 const RULES = {
   [ClientMessage.CreateRoom]: p => {
-    if (!DIFFICULTIES[p.difficultyId]) fail('難易度が正しくありません');
-    if (!DECK_OPTIONS[p.deckSize]) fail('枚数が正しくありません');
+    // Object.hasOwn で調べる（"constructor" などのキーで Object.prototype のものを拾わない）
+    if (typeof p.difficultyId !== 'string' || !Object.hasOwn(DIFFICULTIES, p.difficultyId)) fail('難易度が正しくありません');
+    if (!Number.isInteger(p.deckSize) || !Object.hasOwn(DECK_OPTIONS, p.deckSize)) fail('枚数が正しくありません');
     return { name: cleanName(p.name), difficultyId: p.difficultyId, deckSize: Number(p.deckSize) };
   },
   [ClientMessage.JoinRoom]: p => ({
@@ -71,7 +72,7 @@ const RULES = {
  * @throws {ValidationError} 知らない種類・形が正しくないとき
  */
 export function validateClientMessage(type, payload) {
-  const rule = RULES[type];
+  const rule = typeof type === 'string' && Object.hasOwn(RULES, type) ? RULES[type] : null;
   if (!rule) fail(`知らないメッセージです: ${type}`);
   return rule(payload ?? {});
 }
