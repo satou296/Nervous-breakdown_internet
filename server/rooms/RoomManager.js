@@ -11,12 +11,19 @@ export class RoomManager {
   #cleanupTimers = new Map();
 
   /**
+   * @param {() => TimerScheduler} p.createScheduler  部屋ごとの遅延実行（待合室で切断した人の席を空ける）
+   * @param {number} p.lobbySeatGraceMs  待合室で切断した人の席を空けるまでの時間
    * @param {(room: Room) => void} [p.onRoomOpened]  部屋ができたときに呼ぶ（記録用）
    * @param {(room: Room) => void} [p.onRoomClosed]  誰もいなくなった部屋を消したときに呼ぶ（記録用）
    */
-  constructor({ codeGenerator, createMatch, maxRooms, emptyRoomTtlMs, onRoomOpened = () => {}, onRoomClosed = () => {} }) {
+  constructor({
+    codeGenerator, createMatch, createScheduler, maxRooms, emptyRoomTtlMs, lobbySeatGraceMs,
+    onRoomOpened = () => {}, onRoomClosed = () => {}
+  }) {
     this.codeGenerator = codeGenerator;
     this.createMatch = createMatch;
+    this.createScheduler = createScheduler;
+    this.lobbySeatGraceMs = lobbySeatGraceMs;
     this.maxRooms = maxRooms;
     this.emptyRoomTtlMs = emptyRoomTtlMs;
     this.onRoomOpened = onRoomOpened;
@@ -43,6 +50,8 @@ export class RoomManager {
       code,
       settings: { difficultyId, deckSize },
       createMatch: this.createMatch,
+      scheduler: this.createScheduler(),
+      lobbySeatGraceMs: this.lobbySeatGraceMs,
       onVacancyChange: r => this.#watchVacancy(r)
     });
     this.#rooms.set(code, room);
