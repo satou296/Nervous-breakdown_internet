@@ -89,7 +89,7 @@ server/index.js（サーバー側のコンポジションルート）
 
 ### テスト
 
-**main へのマージは、`npm test` と `npm run test:e2e` が両方通ってから**（GitHub Actions の `unit`・`e2e` ジョブ）。E2E（`e2e/game.spec.mjs`）はヘッドレス Chromium で、チュートリアルを最後まで進める・スキップ・ゲーム開始・達人の腕・招待URL を確かめる。
+**main へのマージは、`npm test` と `npm run test:e2e` が両方通ってから**（GitHub Actions の `unit`・`e2e` ジョブ）。E2E（`e2e/game.spec.mjs`）はヘッドレス Chromium で、チュートリアルを最後まで進める・スキップ・ゲーム開始・達人の腕・招待URL を確かめる。カードは `window.__nervousBreakdownE2E`（`src/app/AutomationProbe.js`。`navigator.webdriver` のときだけ `main.js` が出す）から狙える画面位置を読んでクリックする。この窓口はカードの id と位置だけを返し、中身（数字・マーク）は返さない。
 
 `node:test` で、時間は偽のスケジューラ／時計を注入して進める（`tests/online.test.mjs` の `FakeScheduler`）。`server/index.js` は直接実行時だけ listen し、テストは `createGameServer()` で実サーバーを立てて WebSocket 2接続で通す。時刻や乱数に依存するクラスは `now`・`random`・`scheduler` を引数で受け取る形にそろえる。
 

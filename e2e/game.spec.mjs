@@ -32,27 +32,59 @@ async function openAndWaitTutorial(page, path = '/') {
   await expect(page.locator('#tutorial')).toBeVisible();
 }
 
+/** 場のカード（id・選べるか・狙える画面位置）。画面の src/app/AutomationProbe.js が答える */
+function readCards(page) {
+  return page.evaluate(() => window.__nervousBreakdownE2E.cards());
+}
+
 /**
- * カードの位置はページの外からは分からないので、画面のあちこちをランダムにクリックしていき、
- * 条件を満たす（＝カードがめくれて進行した）まで続ける。
- * 格子状だと、小さく遠いカードが格子の間にあるとずっと当たらないので、毎回ランダムな位置にする。
+ * カードを狙ってクリックし、選ばれる（選べなくなる）まで続ける。
+ * カードはその場で回っているので、真横を向いている間は狙える位置が無く、少し待ってやり直す。
+ * 前の2枚の判定中はクリックが受け付けられないので、それも同じく待つ。
  */
-async function clickUntil(page, isReached, { timeoutMs = 60_000 } = {}) {
-  const { width, height } = page.viewportSize();
+async function clickCard(page, id, { timeoutMs = 30_000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await isReached()) return;
-    // 左側は説明パネルがあるので避ける。チュートリアルのカードは画面の中央寄りに置かれ、動かない
-    const x = width * (0.28 + Math.random() * 0.52);
-    const y = height * (0.05 + Math.random() * 0.57);
-    await page.mouse.click(Math.round(x), Math.round(y));
-    await page.waitForTimeout(40);
+    const card = (await readCards(page)).find(c => c.id === id);
+    if (!card?.pickable) return;
+    if (card.x !== undefined) await page.mouse.click(card.x, card.y);
+    await page.waitForTimeout(100);
   }
-  throw new Error('時間内に進みませんでした');
+  throw new Error(`カード ${id} をめくれませんでした`);
+}
+
+/**
+ * まだ試していない2枚の組を順にめくり、isDone() になるまで続ける。
+ * テストはカードの中身を知らないので、組を総当たりする（6枚なら多くても十数手）。
+ */
+async function matchAllPairs(page, isDone, { afterFirstCard = async () => {} } = {}) {
+  const tried = new Set();
+  let first = true;
+  while (!(await isDone())) {
+    const ids = (await readCards(page)).filter(c => c.pickable).map(c => c.id).sort((a, b) => a - b);
+    const pair = untriedPair(ids, tried);
+    if (!pair) {
+      await page.waitForTimeout(100);
+      continue;
+    }
+    tried.add(pair.join('-'));
+    await clickCard(page, pair[0]);
+    if (first) await afterFirstCard();
+    first = false;
+    await clickCard(page, pair[1]);
+  }
+}
+
+function untriedPair(ids, tried) {
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      if (!tried.has(`${ids[i]}-${ids[j]}`)) return [ids[i], ids[j]];
+    }
+  }
+  return null;
 }
 
 test('開くとチュートリアルが始まり、本物のゲーム画面でカードをめくって最後まで進められる', async ({ page }) => {
-  test.setTimeout(480_000);
   const errors = collectErrors(page);
   await openAndWaitTutorial(page);
   await expect(page.locator('#tutorialText')).toContainText(STEP_TEXT.pickFirst);
@@ -60,17 +92,16 @@ test('開くとチュートリアルが始まり、本物のゲーム画面で�
   await expect(page.locator('#tutorialSkip')).toBeVisible();
   await expect(page.locator('#menu')).toBeHidden();
   await expect(page.locator('#hud')).toBeVisible();
-  // 配り終わるまで待ってからめくる
-  await page.waitForTimeout(1500);
-
-  const text = page.locator('#tutorialText');
-  await clickUntil(page, async () => !(await text.textContent()).includes(STEP_TEXT.pickFirst));
-  await expect(text).toContainText(STEP_TEXT.pickSecond);
-  await page.screenshot({ path: 'test-results/tutorial-revealed.png' });
 
   // 最後までそろえると「ゲームをはじめる」が出て、押すとスタート画面へ
+  const text = page.locator('#tutorialText');
   const finish = page.locator('#tutorialFinish');
-  await clickUntil(page, () => finish.isVisible(), { timeoutMs: 420_000 });
+  await matchAllPairs(page, () => finish.isVisible(), {
+    afterFirstCard: async () => {
+      await expect(text).toContainText(STEP_TEXT.pickSecond);
+      await page.screenshot({ path: 'test-results/tutorial-revealed.png' });
+    }
+  });
   await expect(text).toContainText(STEP_TEXT.done);
   await expect(page.locator('#tutorialSkip')).toBeHidden();
   await finish.click();
