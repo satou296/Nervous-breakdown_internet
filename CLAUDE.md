@@ -26,7 +26,7 @@ docker compose up --build      # 本番（Render）と同じコンテナ
 python3 -m http.server 8000    # 画面だけ（オンライン対戦なしの静的配信）
 ```
 
-サーバーの環境変数は `server/config/ServerConfig.js`（`PORT` / `ALLOWED_ORIGINS` / `TURN_TIMEOUT_SEC` / `MAX_ROOMS`、監視用に `LOG_LEVEL` / `STATS_TOKEN` / `LOKI_URL` / `LOKI_USER` / `LOKI_TOKEN`）。本番公開の手順は `docs/DEPLOY_RENDER.md`、監視の手順は `docs/MONITORING.md` と `docs/MONITORING_DOCKER.md`。
+サーバーの環境変数は `server/config/ServerConfig.js`（`PORT` / `ALLOWED_ORIGINS` / `TURN_TIMEOUT_SEC` / `MAX_ROOMS`、監視用に `LOG_LEVEL` / `STATS_TOKEN` / `LOKI_URL` / `LOKI_USER` / `LOKI_TOKEN`）。本番は Render の無料プラン・1台で、main にマージしても自動では反映しない（`render.yaml` の `autoDeployTrigger: off`。反映は Render の画面の Manual Deploy で、遊んでいる人がいない時間に行う）。マージ前の確認は `npm test`・`npm run test:e2e` に加えて、`docker compose up --build` の本番と同じコンテナでも行う。本番公開の手順は `docs/DEPLOY_RENDER.md`、監視の手順は `docs/MONITORING.md` と `docs/MONITORING_DOCKER.md`。
 
 ## アーキテクチャ
 
