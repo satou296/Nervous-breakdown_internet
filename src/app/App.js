@@ -5,6 +5,7 @@ import { PauseButtonEvent } from '../ui/PauseButton.js';
 import { SessionEvent } from './session/SessionEvent.js';
 import { PointerInputEvent } from '../input/PointerInput.js';
 import { KeyboardInputEvent } from '../input/KeyboardInput.js';
+import { ReachPadEvent } from '../ui/ReachPad.js';
 import { LobbyEvent } from '../online/OnlineLobby.js';
 import { TutorialScreenEvent } from '../ui/TutorialScreen.js';
 import { TutorialGuideEvent, TUTORIAL_STEP_COUNT, TutorialStep, tutorialStepNumber } from './tutorial/TutorialGuide.js';
@@ -25,15 +26,15 @@ export class App {
   #inTutorial = false;
 
   constructor({
-    menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, rig, pointingHand,
+    menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, reachPad, rig, pointingHand,
     attract, createLocalSession, createOnlineSession, lobby, roomLink, resultFormatter, toast, strings,
-    tutorialScreen, tutorialGuide, createTutorialSession,
+    tutorialScreen, tutorialGuide, createTutorialSession, tutorialRecord,
     documentRef = document
   }) {
     Object.assign(this, {
-      menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, rig, pointingHand,
+      menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, reachPad, rig, pointingHand,
       attract, createLocalSession, createOnlineSession, lobby, roomLink, resultFormatter, toast, strings,
-      tutorialScreen, tutorialGuide, createTutorialSession,
+      tutorialScreen, tutorialGuide, createTutorialSession, tutorialRecord,
       documentRef
     });
   }
@@ -46,8 +47,10 @@ export class App {
     this.#wireScreens();
     this.attract.show();
     this.loading.hide();
-    // 開いたら、まずチュートリアル（遊んだことがある人はスキップでいつもの最初の画面へ）
-    this.#startTutorial();
+    // 初めての人だけ、まずチュートリアル（スタート画面の「遊び方を見る」からいつでも見直せる）。
+    // 見終えた人と、招待URLで来た人（待たせると部屋の人を待たせる）は、すぐ最初の画面へ
+    if (this.tutorialRecord.seen || this.roomLink.currentCode()) this.#openHome();
+    else this.#startTutorial();
   }
 
   /** いま人間が操作できるか（ホバー・手の向き・タップで使う） */
@@ -89,12 +92,16 @@ export class App {
 
   /* ---------------- 配線 ---------------- */
 
+  #tap(ndc) {
+    if (!this.isPlaying()) return;
+    this.pointingHand.poke();
+    this.#session.handleTap(ndc);
+  }
+
   #wireInput() {
-    this.pointer.on(PointerInputEvent.Tap, ndc => {
-      if (!this.isPlaying()) return;
-      this.pointingHand.poke();
-      this.#session.handleTap(ndc);
-    });
+    this.pointer.on(PointerInputEvent.Tap, ndc => this.#tap(ndc));
+    // 「めくる」ボタン：画面をタップしたのと同じ。狙いはいまの位置のまま
+    this.reachPad.on(ReachPadEvent.Flip, () => this.#tap(this.pointer.ndc));
     this.pointer.on(PointerInputEvent.Drag, ({ dx, dy }) => {
       if (this.isPlaying() || this.menu.isOpen) this.rig.lookByPixels(dx, dy);
     });
@@ -113,6 +120,7 @@ export class App {
       if (settings.modeId === ONLINE_MODE_ID) this.#openLobby(settings);
       else this.#startLocal(settings);
     });
+    this.menu.on(MenuEvent.Tutorial, () => this.#startTutorial());
     this.result.on(ResultEvent.PlayAgain, () => {
       if (this.#isOnline()) this.#backToRoom();
       else this.#startLocal(this.#lastLocalSettings);
@@ -157,7 +165,7 @@ export class App {
     }
   }
 
-  /** 開いた直後のチュートリアル。実際のゲームと同じ画面で、少ない枚数を1人でめくる */
+  /** 初めて開いたとき（とスタート画面から選んだとき）のチュートリアル。実際のゲームと同じ画面で、少ない枚数を1人でめくる */
   #startTutorial() {
     this.#inTutorial = true;
     try {
@@ -183,6 +191,7 @@ export class App {
   /** チュートリアルを終える（スキップも同じ）。URL を開いたときに本来出す画面へ */
   #leaveTutorial() {
     this.#inTutorial = false;
+    this.tutorialRecord.markSeen();
     this.tutorialGuide.detach();
     this.tutorialScreen.hide();
     this.#endSession();

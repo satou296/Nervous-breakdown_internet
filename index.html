@@ -14,7 +14,7 @@
 </head>
 <body>
 <div id="stage"></div>
-<div id="loading">カードを用意しています…</div>
+<div id="loading" data-failed-text="ゲームを読み込めませんでした。通信の状態を確かめて、ページを再読み込みしてください。">カードを用意しています…</div>
 
 <div id="hud" hidden>
   <div class="hud-block" id="turn"></div>
@@ -28,14 +28,21 @@
   <span class="reach-label">腕</span><span class="reach-track"><span class="reach-fill" id="reachFill"></span></span><span class="reach-keys">W 伸ばす / S 縮める</span>
 </div>
 <div id="contactHint" class="contact-hint" role="status" hidden>
-  <span class="contact-dot" aria-hidden="true"></span>手のひらがカードに触れています<span class="contact-action">左クリックでめくる</span>
+  <span class="contact-dot" aria-hidden="true"></span>手のひらがカードに触れています<span class="contact-action">左クリック（タップ）でめくる</span>
+</div>
+<div id="reachPad" class="reach-pad" hidden>
+  <div class="reach-pad-arm">
+    <button class="pad-btn" type="button" id="reachExtend">伸ばす</button>
+    <button class="pad-btn" type="button" id="reachRetract">縮める</button>
+  </div>
+  <button class="pad-btn pad-flip" type="button" id="reachFlip">めくる</button>
 </div>
 <div id="tutorial" class="tutorial" role="region" aria-label="チュートリアル" hidden>
   <div class="eyebrow" id="tutorialProgress"></div>
   <p class="tutorial-text" id="tutorialText" aria-live="polite"></p>
   <div class="tutorial-actions">
     <button class="btn" type="button" id="tutorialFinish" hidden>ゲームをはじめる</button>
-    <button class="btn ghost tutorial-skip" type="button" id="tutorialSkip">スキップ<small>遊んだことがある方はこちら</small></button>
+    <button class="btn ghost tutorial-skip" type="button" id="tutorialSkip">スキップ<small>あとからスタート画面で見直せます</small></button>
   </div>
 </div>
 <div id="help" hidden>カードをクリック（タップ）でめくる ・ ドラッグか矢印キーで見回す ・ Esc で一時停止</div>
@@ -80,6 +87,7 @@
       </ol>
     </div>
     <button class="btn btn-block" type="button" id="startBtn">ゲーム開始</button>
+    <button class="btn ghost btn-block menu-sub" type="button" id="tutorialBtn">遊び方を見る（チュートリアル）</button>
   </div>
 </div>
 
@@ -142,7 +150,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="src/bootGuard.js"></script>
+<!-- three.js r149 は同梱（外部の CDN が止まっても遊べるように） -->
+<script src="src/lib/vendor/three.min.js"></script>
 <script type="module" src="src/main.js"></script>
 </body>
 </html>

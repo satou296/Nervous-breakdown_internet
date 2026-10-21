@@ -49,6 +49,8 @@ export function createGameServer(config = loadServerConfig()) {
     codeGenerator: new RoomCodeGenerator(),
     maxRooms: config.maxRooms,
     emptyRoomTtlMs: config.emptyRoomTtlMs,
+    lobbySeatGraceMs: config.lobbySeatGraceMs,
+    createScheduler: () => new TimerScheduler(),
     onRoomOpened: room => {
       metrics.count(Counter.RoomsCreated);
       logger.info('room_created', { ...room.settings, rooms: rooms.size });

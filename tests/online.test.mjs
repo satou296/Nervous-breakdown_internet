@@ -315,3 +315,44 @@ test('サーバー起動：おかしなメッセージや1接続からの連打�
     await server.close();
   }
 });
+
+test('サーバー起動：待合室でホストが戻らなければ次の人がホストになり、残った人で始められる', async () => {
+  const config = { ...loadServerConfig({ PORT: '0', LOG_LEVEL: 'silent' }), port: 0, lobbySeatGraceMs: 400 };
+  const server = createGameServer(config);
+  await server.listen();
+  const { port } = server.httpServer.address();
+  try {
+    const host = await connectClient(port);
+    host.send(ClientMessage.CreateRoom, { name: 'ホスト', difficultyId: 'normal', deckSize: 20 });
+    const created = await host.next(ServerMessage.RoomJoined);
+    const guests = [];
+    for (const name of ['ゲスト1', 'ゲスト2']) {
+      const guest = await connectClient(port);
+      guest.send(ClientMessage.JoinRoom, { code: created.code, name });
+      await guest.next(ServerMessage.RoomJoined);
+      guests.push(guest);
+    }
+
+    // 読み込み直し（すぐ戻る）なら、ホストのまま同じ席に戻れる
+    host.ws.close();
+    const back = await connectClient(port);
+    back.send(ClientMessage.JoinRoom, { code: created.code, name: 'ホスト', token: created.you.token });
+    const rejoined = await back.next(ServerMessage.RoomJoined);
+    assert.equal(rejoined.you.index, 0);
+    assert.equal(rejoined.room.hostIndex, 0);
+
+    // タブを閉じたまま戻らなければ、席が空いてゲスト1がホストになる
+    back.ws.close();
+    const promoted = await guests[0].next(ServerMessage.RoomJoined, 5000);
+    assert.equal(promoted.you.index, 0);
+    assert.equal(promoted.room.hostIndex, 0);
+    assert.deepEqual(promoted.room.players.map(p => p.name), ['ゲスト1', 'ゲスト2']);
+
+    guests[0].send(ClientMessage.StartMatch, {});
+    await Promise.all(guests.map(g => g.next(ServerMessage.MatchStarted)));
+
+    guests.forEach(g => g.ws.close());
+  } finally {
+    await server.close();
+  }
+});
