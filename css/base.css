@@ -10,4 +10,5 @@ button { font: inherit; color: inherit; }
 #loading {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   color: var(--muted); letter-spacing: .2em; font-size: .85rem;
+  padding: 0 16px; text-align: center; line-height: 1.8;
 }
