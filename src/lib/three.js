@@ -1,5 +1,5 @@
 /**
- * three.js への唯一の依存点。
+ * three.js への唯一の依存点。本体は src/lib/vendor/three.min.js（r149 を同梱）を index.html の <script> で読む。
  * 他のモジュールは window.THREE を直接参照せず、必ずここから import する。
  * （ライブラリの読み込み方法を変える場合はこのファイルだけを直せばよい）
  */

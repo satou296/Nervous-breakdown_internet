@@ -14,6 +14,7 @@ import { AnchorTravelFactory } from '../src/render/cards/travel/AnchorTravelFact
 import {
   TutorialGuide, TutorialGuideEvent, TutorialStep, TUTORIAL_STEP_COUNT, tutorialStepNumber
 } from '../src/app/tutorial/TutorialGuide.js';
+import { TutorialRecord } from '../src/app/tutorial/TutorialRecord.js';
 
 const identity = { shuffle: a => [...a] };
 
@@ -93,4 +94,20 @@ test('チュートリアルのカードは定位置から動かず、上から�
 
 test('チュートリアルの難易度はメニュー・オンラインでは選べない', () => {
   assert.equal(DIFFICULTIES[TUTORIAL_DIFFICULTY.id], undefined);
+});
+
+test('チュートリアルを見終えたかを覚え、保存できない環境でも止まらない', () => {
+  const store = new Map();
+  const storage = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  const record = new TutorialRecord({ storage });
+  assert.equal(record.seen, false);
+  record.markSeen();
+  assert.equal(record.seen, true);
+  assert.equal(new TutorialRecord({ storage }).seen, true, '開き直しても覚えている');
+
+  const broken = { getItem: () => { throw new Error('denied'); }, setItem: () => { throw new Error('denied'); } };
+  const fallback = new TutorialRecord({ storage: broken });
+  assert.doesNotThrow(() => fallback.markSeen());
+  assert.equal(fallback.seen, false, '保存できなければ、毎回まだ見ていないものとして扱う');
+  assert.equal(new TutorialRecord({ storage: null }).seen, false);
 });
