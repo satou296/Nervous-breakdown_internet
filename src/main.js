@@ -74,6 +74,7 @@ import { ViewportBinder } from './app/ViewportBinder.js';
 import { PauseController } from './app/PauseController.js';
 import { CardSelectionFactory } from './app/selection/CardSelectionMethods.js';
 import { ContactFeedback } from './app/ContactFeedback.js';
+import { AutomationProbe } from './app/AutomationProbe.js';
 import { TutorialGuide } from './app/tutorial/TutorialGuide.js';
 import { TutorialRecord } from './app/tutorial/TutorialRecord.js';
 import { waitForFont } from './app/fontLoader.js';
@@ -158,6 +159,10 @@ async function main() {
     knockDrag: ARM.knockDrag
   });
   const picker = new CardPicker({ camera: rig.camera, field });
+  // E2E がカードを狙ってクリックできるよう、自動操作のときだけ出す
+  if (navigator.webdriver) {
+    window.__nervousBreakdownE2E = new AutomationProbe({ camera: rig.camera, field, picker, canvas: renderContext.canvas });
+  }
   const choreographer = new CardChoreographer({
     stage: new RevealStage({ camera: rig.camera, layout: REVEAL_LAYOUT }),
     motion: MOTION
