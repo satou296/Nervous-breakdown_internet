@@ -93,7 +93,8 @@ test('数値：現在の値と累計をまとめて返す', () => {
   now = 61_000;
   assert.deepEqual(metrics.snapshot(), {
     status: 'ok', uptimeSec: 60, connections: 2, rooms: 1,
-    connectionsTotal: 0, roomsCreatedTotal: 2, matchesStartedTotal: 0, matchesFinishedTotal: 0,
+    connectionsTotal: 0, connectionsRejectedTotal: 0, roomCreatesLimitedTotal: 0, roomJoinsLimitedTotal: 0,
+    roomsCreatedTotal: 2, matchesStartedTotal: 0, matchesFinishedTotal: 0,
     errorsTotal: 3, memoryRssBytes: 4096
   });
 });
@@ -131,6 +132,8 @@ test('/api/stats：部屋を作ると、接続数・部屋数・累計に反映�
     assert.equal(after.roomsPlaying, 0);
     assert.equal(after.players, 1);
     assert.equal(after.roomsCreatedTotal, 1);
+    assert.equal(after.clientAddresses, 0, '手元（127.0.0.1）からの接続は住所ごとには数えない');
+    assert.equal(after.connectionsUnidentified, 1);
     assert.equal(JSON.stringify(after).includes('ホスト'), false, '名前は外に出さない');
     ws.close();
   } finally {

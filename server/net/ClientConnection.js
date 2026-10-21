@@ -23,9 +23,13 @@ export class ClientConnection extends EventEmitter {
   /** 入っている部屋（Room が設定する） */
   room = null;
 
-  constructor(socket, { rateLimit, logger = console }) {
+  /**
+   * @param {string|null} [p.address]  上限を数える単位の住所（resolveClientAddress の結果。分からなければ null）
+   */
+  constructor(socket, { rateLimit, address = null, logger = console }) {
     super();
     this.id = randomUUID();
+    this.address = address;
     this.#socket = socket;
     this.#limiter = new RateLimiter(rateLimit);
     this.#logger = logger;

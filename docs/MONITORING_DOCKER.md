@@ -172,8 +172,8 @@ docker compose up -d
 | 種類 | 中身 |
 |---|---|
 | 項目（親） | `/api/stats` を1分ごとに読む `Game stats (raw)` |
-| 項目（子） | Connections / Players / Rooms / Rooms playing / Uptime / Memory と、各種の累計（`… total`） |
-| トリガー | 「応答がない」（5分）・「再起動した」・「エラーが起きた」 |
+| 項目（子） | Connections / Players / Rooms / Rooms playing / Uptime / Memory / Client addresses / Connections unidentified と、各種の累計（`… total`） |
+| トリガー | 「応答がない」（5分）・「再起動した」・「エラーが起きた」・「接続数の上限で断った」・「部屋を作る回数の上限で断った」・「部屋番号を外しすぎた接続を断った」 |
 
 ### 6-3. 監視対象（ホスト）を作る
 

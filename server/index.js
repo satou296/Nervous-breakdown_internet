@@ -12,6 +12,9 @@ import { HttpRouter } from './http/HttpRouter.js';
 import { OriginPolicy } from './net/OriginPolicy.js';
 import { ClientConnection } from './net/ClientConnection.js';
 import { MessageDispatcher } from './net/MessageDispatcher.js';
+import { ConnectionGate } from './net/ConnectionGate.js';
+import { RoomAccessLimiter } from './net/RoomAccessLimiter.js';
+import { resolveClientAddress, forwardedEntryCount } from './net/ClientAddress.js';
 import { RoomManager } from './rooms/RoomManager.js';
 import { RoomCodeGenerator } from './rooms/RoomCodeGenerator.js';
 import { OnlineMatch, MatchEvent } from './match/OnlineMatch.js';
@@ -20,7 +23,7 @@ import { Logger, ConsoleSink } from './monitoring/Logger.js';
 import { LokiSink } from './monitoring/LokiSink.js';
 import { ServerMetrics, Counter } from './monitoring/ServerMetrics.js';
 
-import { SOCKET_PATH, LIMITS } from '../src/net/Protocol.js';
+import { SOCKET_PATH, LIMITS, ServerMessage, ErrorCode, encode } from '../src/net/Protocol.js';
 import { DeckFactory } from '../src/domain/DeckFactory.js';
 import { FisherYatesShuffler } from '../src/domain/Shuffler.js';
 import { SameRankRule } from '../src/domain/MatchRule.js';
@@ -39,9 +42,10 @@ export function createGameServer(config = loadServerConfig()) {
 
   /* ---- 監視（記録と数値）。connections と rooms は下で作るので、関数で遅延参照する ---- */
   const connections = new Set();
+  const gate = new ConnectionGate({ maxConnections: config.maxConnections, maxPerAddress: config.maxConnectionsPerAddress });
   const logger = createLogger(config);
   const metrics = new ServerMetrics({
-    gauges: () => ({ connections: connections.size, ...rooms.stats() }),
+    gauges: () => ({ connections: connections.size, ...gate.stats(), ...rooms.stats() }),
     errorCount: () => logger.errorCount
   });
 
@@ -98,20 +102,46 @@ export function createGameServer(config = loadServerConfig()) {
     maxPayload: LIMITS.maxMessageBytes,
     verifyClient: ({ origin, req }) => originPolicy.isAllowed(origin, req.headers.host)
   });
-  const dispatcher = new MessageDispatcher({ rooms, logger });
-  wss.on('connection', socket => {
-    const connection = new ClientConnection(socket, { rateLimit: config.rateLimit, logger });
+  const roomAccess = new RoomAccessLimiter({ createLimit: config.roomCreateLimit, joinMissLimit: config.joinMissLimit });
+  const dispatcher = new MessageDispatcher({
+    rooms, roomAccess, logger,
+    onLimited: kind => {
+      metrics.count(kind === 'create' ? Counter.RoomCreatesLimited : Counter.RoomJoinsLimited);
+      // 総当たりの最中は大量に出るので、ふだんは記録せず回数（/api/stats）で見る
+      logger.debug('room_access_limited', { kind });
+    }
+  });
+  wss.on('connection', (socket, req) => {
+    // 住所そのものは記録しない（件数と、読み取れたかどうかだけ）
+    const address = resolveClientAddress(req, { trustProxyHops: config.trustProxyHops });
+    const rejected = gate.admit(address);
+    if (rejected) {
+      metrics.count(Counter.ConnectionsRejected);
+      logger.debug('ws_rejected', { reason: rejected });
+      socket.send(encode(ServerMessage.Error, { code: ErrorCode.ServerBusy, message: '混み合っています。しばらくしてからお試しください' }));
+      socket.close(1013);
+      return;
+    }
+    const connection = new ClientConnection(socket, { rateLimit: config.rateLimit, address, logger });
     connections.add(connection);
     metrics.count(Counter.Connections);
-    logger.info('ws_connected', { connections: connections.size });
+    logger.info('ws_connected', {
+      connections: connections.size,
+      addressResolved: address !== null,
+      forwardedForEntries: forwardedEntryCount(req)
+    });
     connection.on('closed', () => {
       connections.delete(connection);
+      gate.release(address);
       logger.info('ws_closed', { connections: connections.size });
     });
     dispatcher.attach(connection);
   });
 
-  const heartbeat = setInterval(() => connections.forEach(c => c.checkAlive()), config.heartbeatMs);
+  const heartbeat = setInterval(() => {
+    connections.forEach(c => c.checkAlive());
+    roomAccess.sweep();
+  }, config.heartbeatMs);
   heartbeat.unref();
 
   return {

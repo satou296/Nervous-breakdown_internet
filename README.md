@@ -73,7 +73,7 @@ main.js（組み立てのみ）
 - **カードの動きをそろえる**：全員に同じ「乱数の種」を配り、カードごとに独立した乱数で動かします。時計もサーバーの時刻にそろえるので、全員の画面で同じ動きになります。腕で弾いたときは、その出来事を全員に伝えます。
 - **自分の手番だけ操作できる**：カードを選ぶ・腕を伸ばす・弾くは、手番の人だけ。他の人の狙いは線と名札で表示します。
 - **時間切れ・切断**：持ち時間（既定45秒）を過ぎるか、手番の人が切断して8秒たつと次の人へ。切断した人は合言葉（token）で同じ席に戻れます。待合室で切断した人は30秒たっても戻らなければ席を空け、ホストだったときは次の人がホストになります。
-- **安全対策**：受け取るメッセージはすべて形と値を検証（`MessageValidator`）、1接続あたりの回数制限（`RateLimiter`）、他サイトからの接続を拒否（`OriginPolicy`）、公開するファイルを限定（`StaticFileServer`）。
+- **安全対策**：受け取るメッセージはすべて形と値を検証（`MessageValidator`）、1接続あたりの回数制限（`RateLimiter`）、接続数の上限（全体と住所ごと。`ConnectionGate`）、部屋を作る回数と部屋番号を外した回数の上限（総当たり対策。`RoomAccessLimiter`）、他サイトからの接続を拒否（`OriginPolicy`）、公開するファイルを限定（`StaticFileServer`）。
 - **制限**：部屋の情報はサーバーのメモリにあるので、サーバーは1台で動かします。サーバーが再起動すると、進行中の部屋はなくなります。達人・極の「手のひらが触れているか」は各自の画面で判定しています（サーバーは手番とカードの状態を確認）。
 
 | フォルダ | 主なクラス | 責務 |
@@ -88,7 +88,7 @@ main.js（組み立てのみ）
 | `server/` | `index.js` | サーバーの組み立て（HTTP と WebSocket） |
 | `server/http/` | `HttpRouter`, `StaticFileServer` | /health・/api/stats・招待URLの転送・画面ファイルの配信 |
 | `server/monitoring/` | `Logger`, `ConsoleSink`, `LokiSink`, `ServerMetrics` | 記録（1行＝1つの JSON。標準出力と Loki へ）と、監視用の数値 |
-| `server/net/` | `ClientConnection`, `MessageDispatcher`, `MessageValidator`, `RateLimiter`, `OriginPolicy` | 接続・振り分け・検証・回数制限・接続元の確認 |
+| `server/net/` | `ClientConnection`, `MessageDispatcher`, `MessageValidator`, `RateLimiter`, `OriginPolicy`, `ConnectionGate`, `RoomAccessLimiter`, `ClientAddress` | 接続・振り分け・検証・回数制限・接続元の確認・接続数の上限・総当たり対策・接続元の住所の読み取り |
 | `server/rooms/` | `RoomManager`, `Room`, `Seat`, `RoomCodeGenerator` | 部屋の一覧・部屋・席・部屋番号 |
 | `server/match/` | `OnlineMatch`, `TimerScheduler` | 1試合の判定と時間進行（持ち時間・切断時の自動パス） |
 
