@@ -1,5 +1,8 @@
 export const Counter = Object.freeze({
   Connections: 'connectionsTotal',
+  ConnectionsRejected: 'connectionsRejectedTotal',  // 接続数の上限で断った回数
+  RoomCreatesLimited: 'roomCreatesLimitedTotal',    // 部屋を作る回数の上限で断った回数
+  RoomJoinsLimited: 'roomJoinsLimitedTotal',        // 部屋番号を外しすぎて断った回数
   RoomsCreated: 'roomsCreatedTotal',
   MatchesStarted: 'matchesStartedTotal',
   MatchesFinished: 'matchesFinishedTotal'

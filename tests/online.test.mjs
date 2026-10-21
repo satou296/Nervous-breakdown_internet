@@ -5,7 +5,9 @@ import WebSocket from 'ws';
 
 import { OnlineMatch, MatchEvent } from '../server/match/OnlineMatch.js';
 import { OriginPolicy } from '../server/net/OriginPolicy.js';
-import { RateLimiter } from '../server/net/RateLimiter.js';
+import { RateLimiter, KeyedRateLimiter } from '../server/net/RateLimiter.js';
+import { ConnectionGate, GateRejection } from '../server/net/ConnectionGate.js';
+import { resolveClientAddress, forwardedEntryCount } from '../server/net/ClientAddress.js';
 import { validateClientMessage, ValidationError } from '../server/net/MessageValidator.js';
 import { RoomCodeGenerator } from '../server/rooms/RoomCodeGenerator.js';
 import { createGameServer } from '../server/index.js';
@@ -170,6 +172,57 @@ test('接続元の確認と回数制限', () => {
   assert.equal(limiter.tryTake(), true);
 });
 
+test('住所ごとの回数制限は、満タンに戻った住所を忘れる', () => {
+  let t = 0;
+  const limiter = new KeyedRateLimiter({ perSecond: 1, burst: 2, now: () => t });
+  assert.equal(limiter.canTake('a'), true, '初めての住所は使える');
+  assert.equal(limiter.tryTake('a'), true);
+  assert.equal(limiter.tryTake('a'), true);
+  assert.equal(limiter.canTake('a'), false);
+  assert.equal(limiter.canTake('b'), true, 'ほかの住所には影響しない');
+  t += 2000;
+  limiter.sweep();
+  assert.equal(limiter.size, 0);
+});
+
+test('接続元の住所：中継の段数に合わせて X-Forwarded-For を読み、内部の住所は数えない', () => {
+  const req = (remoteAddress, xff) => ({ socket: { remoteAddress }, headers: xff === undefined ? {} : { 'x-forwarded-for': xff } });
+  assert.equal(resolveClientAddress(req('203.0.113.7')), '203.0.113.7');
+  assert.equal(resolveClientAddress(req('::ffff:203.0.113.7')), '203.0.113.7');
+  assert.equal(resolveClientAddress(req('127.0.0.1')), null, '手元');
+  assert.equal(resolveClientAddress(req('10.1.2.3')), null, '内部の住所（中継の住所を拾っている）');
+  assert.equal(resolveClientAddress(req('2001:db8:1:2:aaaa::1')), '2001:db8:1:2::/64', 'IPv6 は /64 で1人');
+  assert.equal(resolveClientAddress(req('2001:db8:1:2:bbbb::9')), '2001:db8:1:2::/64');
+
+  // 利用者が自分で書いた住所（左側）は信用せず、中継が書き足した位置を読む
+  const hops = n => ({ trustProxyHops: n });
+  assert.equal(resolveClientAddress(req('10.0.0.1', '6.6.6.6, 198.51.100.4'), hops(1)), '198.51.100.4');
+  assert.equal(resolveClientAddress(req('10.0.0.1', '6.6.6.6, 198.51.100.4, 10.0.0.9'), hops(2)), '198.51.100.4');
+  assert.equal(resolveClientAddress(req('10.0.0.1', '198.51.100.4'), hops(2)), null, '件数が足りなければ分からない');
+  assert.equal(resolveClientAddress(req('10.0.0.1', 'こわれた値'), hops(1)), null);
+  assert.equal(resolveClientAddress(req('10.0.0.1'), hops(1)), null);
+  assert.equal(forwardedEntryCount(req('10.0.0.1', '6.6.6.6, 198.51.100.4')), 2);
+  assert.equal(forwardedEntryCount(req('10.0.0.1')), 0);
+});
+
+test('接続数の上限：全体と住所ごと。住所が分からない接続は全体だけで数える', () => {
+  const gate = new ConnectionGate({ maxConnections: 4, maxPerAddress: 2 });
+  assert.equal(gate.admit('203.0.113.1'), null);
+  assert.equal(gate.admit('203.0.113.1'), null);
+  assert.equal(gate.admit('203.0.113.1'), GateRejection.PerAddress);
+  assert.equal(gate.admit(null), null);
+  assert.equal(gate.admit(null), null);
+  assert.deepEqual(gate.stats(), { clientAddresses: 1, connectionsUnidentified: 2 });
+  assert.equal(gate.admit('203.0.113.2'), GateRejection.Total);
+  gate.release('203.0.113.1');
+  assert.equal(gate.admit('203.0.113.2'), null, '1つ空けば入れる');
+  gate.release('203.0.113.1');
+  gate.release('203.0.113.2');
+  gate.release(null);
+  gate.release(null);
+  assert.deepEqual(gate.stats(), { clientAddresses: 0, connectionsUnidentified: 0 });
+});
+
 test('部屋番号は決まった文字だけで、重複しない', () => {
   const taken = new Set(['AAAAA']);
   let calls = 0;
@@ -189,8 +242,8 @@ test('サーバーの時計の推定は、往復の半分を足して求める',
 
 /* ---------------- 実際にサーバーを起動して、2人で通信する ---------------- */
 
-function connectClient(port) {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin: `http://127.0.0.1:${port}` });
+function connectClient(port, { headers } = {}) {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin: `http://127.0.0.1:${port}`, headers });
   const inbox = [];
   const waiters = [];
   ws.on('message', data => {
@@ -352,6 +405,126 @@ test('サーバー起動：待合室でホストが戻らなければ次の人�
     await Promise.all(guests.map(g => g.next(ServerMessage.MatchStarted)));
 
     guests.forEach(g => g.ws.close());
+  } finally {
+    await server.close();
+  }
+});
+
+/* ---------------- 接続数の上限と、部屋番号の総当たり対策 ---------------- */
+
+/** Render のように、中継が1段 X-Forwarded-For を書き足す構成でサーバーを立てる */
+async function startLimitedServer(overrides = {}) {
+  const config = {
+    ...loadServerConfig({ PORT: '0', LOG_LEVEL: 'silent', TRUST_PROXY_HOPS: '1' }),
+    port: 0, maxConnections: 5, maxConnectionsPerAddress: 2, ...overrides
+  };
+  const server = createGameServer(config);
+  await server.listen();
+  const { port } = server.httpServer.address();
+  const from = (ip, spoofed) => connectClient(port, { headers: { 'X-Forwarded-For': spoofed ? `${spoofed}, ${ip}` : ip } });
+  const stats = () => fetch(`http://127.0.0.1:${port}/api/stats`, { headers: { Authorization: 'Bearer t' } }).then(r => r.json());
+  return { server, port, from, stats };
+}
+
+const closed = client => new Promise(resolve => {
+  if (client.ws.readyState === WebSocket.CLOSED) resolve();
+  else client.ws.on('close', resolve);
+});
+
+test('サーバー起動：同じ住所からつなげる数には上限があり、ほかの住所の人は入れる。左側に書いた住所ではすり抜けられない', async () => {
+  const { server, from, stats } = await startLimitedServer({ statsToken: 't' });
+  try {
+    const a1 = await from('203.0.113.1');
+    const a2 = await from('203.0.113.1');
+    const a3 = await from('203.0.113.1');
+    assert.equal((await a3.next(ServerMessage.Error)).code, ErrorCode.ServerBusy);
+    await closed(a3);
+
+    const spoof = await from('203.0.113.1', '198.51.100.99');
+    assert.equal((await spoof.next(ServerMessage.Error)).code, ErrorCode.ServerBusy, '自分で書いた住所は使われない');
+    await closed(spoof);
+
+    const b = await from('203.0.113.2');
+    b.send(ClientMessage.Ping, { t: 1 });
+    await b.next(ServerMessage.Pong);
+
+    a1.ws.close();
+    await closed(a1);
+    await new Promise(r => setTimeout(r, 50));
+    const again = await from('203.0.113.1');
+    again.send(ClientMessage.Ping, { t: 1 });
+    await again.next(ServerMessage.Pong);
+
+    const s = await stats();
+    assert.equal(s.connectionsRejectedTotal, 2);
+    assert.equal(s.clientAddresses, 2);
+    assert.equal(JSON.stringify(s).includes('203.0.113'), false, '住所は外に出さない');
+    [a2, b, again].forEach(c => c.ws.close());
+  } finally {
+    await server.close();
+  }
+});
+
+test('サーバー起動：全体の接続数にも上限があり、住所が分からない接続も数える', async () => {
+  const { server, port } = await startLimitedServer({ maxConnections: 2, trustProxyHops: 0 });
+  try {
+    const c1 = await connectClient(port);
+    const c2 = await connectClient(port);
+    const c3 = await connectClient(port);
+    assert.equal((await c3.next(ServerMessage.Error)).code, ErrorCode.ServerBusy);
+    await closed(c3);
+    [c1, c2].forEach(c => c.ws.close());
+  } finally {
+    await server.close();
+  }
+});
+
+test('サーバー起動：部屋番号を外し続けると受け付けなくなる。つなぎ直しても同じ住所なら続けられない', async () => {
+  const { server, from } = await startLimitedServer({ joinMissLimit: { perSecond: 0.001, burst: 3 } });
+  try {
+    const host = await from('203.0.113.10');
+    host.send(ClientMessage.CreateRoom, { name: 'ホスト', difficultyId: 'normal', deckSize: 20 });
+    const { code } = await host.next(ServerMessage.RoomJoined);
+
+    const guesser = await from('203.0.113.66');
+    for (const guess of ['AAAAA', 'BBBBB', 'CCCCC']) {
+      guesser.send(ClientMessage.JoinRoom, { code: guess, name: 'x' });
+      assert.equal((await guesser.next(ServerMessage.Error)).code, ErrorCode.RoomNotFound);
+    }
+    guesser.send(ClientMessage.JoinRoom, { code, name: 'x' });
+    assert.equal((await guesser.next(ServerMessage.Error)).code, ErrorCode.RateLimited, '正しい番号でも、外しすぎた後は入れない');
+
+    guesser.ws.close();
+    await closed(guesser);
+    const retry = await from('203.0.113.66');
+    retry.send(ClientMessage.JoinRoom, { code: 'DDDDD', name: 'x' });
+    assert.equal((await retry.next(ServerMessage.Error)).code, ErrorCode.RateLimited);
+
+    // 招待された人（ほかの住所）は、番号を1回で入れる
+    const friend = await from('203.0.113.20');
+    friend.send(ClientMessage.JoinRoom, { code, name: '友だち' });
+    assert.equal((await friend.next(ServerMessage.RoomJoined)).you.index, 1);
+    [host, retry, friend].forEach(c => c.ws.close());
+  } finally {
+    await server.close();
+  }
+});
+
+test('サーバー起動：同じ住所から部屋を作れる回数には上限がある', async () => {
+  const { server, from } = await startLimitedServer({ roomCreateLimit: { perSecond: 0.001, burst: 2 } });
+  try {
+    const maker = await from('203.0.113.30');
+    for (let i = 0; i < 2; i++) {
+      maker.send(ClientMessage.CreateRoom, { name: 'x', difficultyId: 'normal', deckSize: 20 });
+      await maker.next(ServerMessage.RoomJoined);
+    }
+    maker.send(ClientMessage.CreateRoom, { name: 'x', difficultyId: 'normal', deckSize: 20 });
+    assert.equal((await maker.next(ServerMessage.Error)).code, ErrorCode.RateLimited);
+
+    const other = await from('203.0.113.31');
+    other.send(ClientMessage.CreateRoom, { name: 'y', difficultyId: 'normal', deckSize: 20 });
+    await other.next(ServerMessage.RoomJoined);
+    [maker, other].forEach(c => c.ws.close());
   } finally {
     await server.close();
   }

@@ -201,6 +201,91 @@ zabbix_export:
           tags:
             - tag: component
               value: game
+        - uuid: 40d1eb0fb3cc4f3b8a850c1984561c3c
+          name: 'Client addresses'
+          type: DEPENDENT
+          key: game.client.addresses
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.clientAddresses
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: 9c4d00e920a246bf90399fc2b2ab57ae
+          name: 'Connections unidentified'
+          type: DEPENDENT
+          key: game.connections.unidentified
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.connectionsUnidentified
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+        - uuid: 43a5c0c8ad954feea941d7154f1b8193
+          name: 'Connections rejected total'
+          type: DEPENDENT
+          key: game.connections.rejected.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.connectionsRejectedTotal
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+          triggers:
+            - uuid: 0947379fab3940a78114630352111d54
+              expression: 'change(/Nervous breakdown internet/game.connections.rejected.total)>0'
+              name: '接続数の上限で接続を断った（大量接続の疑い）'
+              priority: WARNING
+        - uuid: fea92f9a5a1e4b3abd09c69da3d8b17c
+          name: 'Room creates limited total'
+          type: DEPENDENT
+          key: game.rooms.creates.limited.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.roomCreatesLimitedTotal
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+          triggers:
+            - uuid: c9ae59d98adf4adc8879f1f48850b478
+              expression: 'change(/Nervous breakdown internet/game.rooms.creates.limited.total)>0'
+              name: '部屋を作る回数の上限で断った（部屋を埋める攻撃の疑い）'
+              priority: WARNING
+        - uuid: 8511ca35820947f7bfcca49a11fcd753
+          name: 'Room joins limited total'
+          type: DEPENDENT
+          key: game.rooms.joins.limited.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.roomJoinsLimitedTotal
+          master_item:
+            key: game.stats.raw
+          tags:
+            - tag: component
+              value: game
+          triggers:
+            - uuid: d9c0a7e473764418bc74e2709fd91ba1
+              expression: 'change(/Nervous breakdown internet/game.rooms.joins.limited.total)>0'
+              name: '部屋番号を外しすぎた接続を断った（総当たりの疑い）'
+              priority: WARNING
       macros:
         - macro: '{$GAME_STATS_TOKEN}'
           type: SECRET_TEXT

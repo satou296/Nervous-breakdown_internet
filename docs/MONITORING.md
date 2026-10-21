@@ -47,8 +47,10 @@ Zabbix・Loki・Grafana は、Render とは別の場所で動かします（下�
 合言葉を設定していない間は、この入口そのものが閉じています（404）。ブラウザでそのまま開いても見られません。
 
 ```json
-{"status":"ok","uptimeSec":120,"connections":2,"rooms":1,"roomsPlaying":1,"players":2,
- "connectionsTotal":5,"roomsCreatedTotal":2,"matchesStartedTotal":1,"matchesFinishedTotal":0,
+{"status":"ok","uptimeSec":120,"connections":2,"clientAddresses":2,"connectionsUnidentified":0,
+ "rooms":1,"roomsPlaying":1,"players":2,
+ "connectionsTotal":5,"connectionsRejectedTotal":0,"roomCreatesLimitedTotal":0,"roomJoinsLimitedTotal":0,
+ "roomsCreatedTotal":2,"matchesStartedTotal":1,"matchesFinishedTotal":0,
  "errorsTotal":0,"memoryRssBytes":70516736}
 ```
 
@@ -57,10 +59,15 @@ Zabbix・Loki・Grafana は、Render とは別の場所で動かします（下�
 | `status` | `ok` なら正常 | 現在の値 |
 | `uptimeSec` | 起動してからの秒数（急に小さくなったら再起動した） | 現在の値 |
 | `connections` | つながっている画面の数（WebSocket） | 現在の値 |
+| `clientAddresses` | つながっている人の住所（IP）の数。住所そのものは出さない | 現在の値 |
+| `connectionsUnidentified` | 住所が分からない接続の数（住所ごとの上限がかからない）。Render で多いままなら `TRUST_PROXY_HOPS` の設定を見直す（`docs/DEPLOY_RENDER.md`） | 現在の値 |
 | `rooms` | 部屋の数 | 現在の値 |
 | `roomsPlaying` | 対戦中の部屋の数 | 現在の値 |
 | `players` | 部屋に入っていて、つながっている人数 | 現在の値 |
 | `connectionsTotal` | 接続された回数 | 累計 |
+| `connectionsRejectedTotal` | 接続数の上限（全体・同じ住所から）で断った回数。増え続けるなら大量接続の疑い | 累計 |
+| `roomCreatesLimitedTotal` | 同じ住所から部屋を作りすぎて断った回数 | 累計 |
+| `roomJoinsLimitedTotal` | 部屋番号を外しすぎて断った回数。増え続けるなら部屋番号の総当たりの疑い | 累計 |
 | `roomsCreatedTotal` | 部屋が作られた回数 | 累計 |
 | `matchesStartedTotal` / `matchesFinishedTotal` | 試合が始まった／最後まで終わった回数 | 累計 |
 | `errorsTotal` | サーバーで起きたエラーの回数 | 累計 |
@@ -81,7 +88,8 @@ Render の **Logs** 画面に、次のような行が出ます。
 | `event` | いつ出るか | 一緒に出る内容 |
 |---|---|---|
 | `server_started` / `server_stopped` | 起動・停止 | ポート、Loki へ送る設定の有無 |
-| `ws_connected` / `ws_closed` | 画面がつながった／切れた | その時点の接続数 |
+| `ws_connected` / `ws_closed` | 画面がつながった／切れた | その時点の接続数。`ws_connected` には、住所が読み取れたか（`addressResolved`）と X-Forwarded-For の件数（`forwardedForEntries`）も出る（住所そのものは出さない） |
+| `ws_rejected` / `room_access_limited` | 接続数の上限で断った／部屋の作りすぎ・部屋番号の外しすぎで断った（`level` は `debug`。攻撃の最中は大量に出るので、ふだんは記録せず `/api/stats` の回数で見る） | 断った理由（`reason`・`kind`） |
 | `room_created` / `room_closed` | 部屋ができた／空の部屋を片付けた | 難易度・枚数・部屋数 |
 | `match_started` / `match_finished` | 試合の開始／終了 | 難易度・枚数・人数・かかった秒数 |
 | `dispatch_error` / `http_error` / `connection_error` | サーバーでエラーが起きた（`level` は `error`。`connection_error` はその接続だけを切る） | エラーの内容と発生場所 |
@@ -183,17 +191,25 @@ Zabbix がすでに動いている前提です（まだなら、Zabbix 公式の
 | Uptime | `game.uptime`（Units に `uptime`） | `$.uptimeSec` |
 | Memory | `game.memory`（Units に `B`） | `$.memoryRssBytes` |
 | Errors total | `game.errors.total` | `$.errorsTotal` |
+| Client addresses | `game.client.addresses` | `$.clientAddresses` |
+| Connections unidentified | `game.connections.unidentified` | `$.connectionsUnidentified` |
+| Connections rejected total | `game.connections.rejected.total` | `$.connectionsRejectedTotal` |
+| Room creates limited total | `game.rooms.creates.limited.total` | `$.roomCreatesLimitedTotal` |
+| Room joins limited total | `game.rooms.joins.limited.total` | `$.roomJoinsLimitedTotal` |
 | Matches started total | `game.matches.started.total` | `$.matchesStartedTotal` |
 
 ### 3-4. 異常を知らせる条件（トリガー）を作る
 
-**Triggers → Create trigger** で、まず次の3つを作ると実用になります。
+**Triggers → Create trigger** で、次の6つを作ります（テンプレートを取り込んだ場合は、すでに入っています）。
 
 | Name | Severity | Expression |
 |---|---|---|
 | ゲームサーバーから応答がない | High | `nodata(/nervous-breakdown-internet/game.connections,5m)=1` |
 | ゲームサーバーが再起動した | Information | `last(/nervous-breakdown-internet/game.uptime)<180` |
 | ゲームサーバーでエラーが起きた | Warning | `change(/nervous-breakdown-internet/game.errors.total)>0` |
+| 接続数の上限で接続を断った（大量接続の疑い） | Warning | `change(/nervous-breakdown-internet/game.connections.rejected.total)>0` |
+| 部屋を作る回数の上限で断った（部屋を埋める攻撃の疑い） | Warning | `change(/nervous-breakdown-internet/game.rooms.creates.limited.total)>0` |
+| 部屋番号を外しすぎた接続を断った（総当たりの疑い） | Warning | `change(/nervous-breakdown-internet/game.rooms.joins.limited.total)>0` |
 
 - 「応答がない」は、Render の再起動（約1分）では鳴らないよう、5分にしています。
 - 「エラーが起きた」は、再起動で累計が 0 に戻った瞬間には鳴りません（増えたときだけ）。
