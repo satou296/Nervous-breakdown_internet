@@ -114,9 +114,10 @@ test('達人モードでは素手の腕が伸ばせる', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('招待URLで開いたときも、チュートリアルのスキップ後は参加画面になる', async ({ page }) => {
-  await openAndWaitTutorial(page, '/?room=ABCDE');
-  await page.locator('#tutorialSkip').click();
+test('招待URLで開いたときは、チュートリアルを飛ばしてすぐ参加画面になる', async ({ page }) => {
+  await page.goto('/?room=ABCDE');
+  await expect(page.locator('#loading')).toBeHidden({ timeout: 30_000 });
+  await expect(page.locator('#tutorial')).toBeHidden();
   await expect(page.locator('#lobby')).toBeVisible();
   await expect(page.locator('#lobbyFormTitle')).toContainText('ABCDE');
   await expect(page.locator('#menu')).toBeHidden();
@@ -135,4 +136,21 @@ test('three.js が読み込めないときは、読み込み中のまま止ま�
   await page.route('**/src/lib/vendor/three.min.js', route => route.abort());
   await page.goto('/');
   await expect(page.locator('#loading')).toContainText('読み込めませんでした', { timeout: 30_000 });
+});
+
+test('チュートリアルは初回だけ。開き直すとスタート画面になり、「遊び方を見る」で見直せる', async ({ page }) => {
+  await openAndWaitTutorial(page);
+  await page.locator('#tutorialSkip').click();
+  await expect(page.locator('#menu')).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator('#loading')).toBeHidden({ timeout: 30_000 });
+  await expect(page.locator('#menu')).toBeVisible();
+  await expect(page.locator('#tutorial')).toBeHidden();
+
+  await page.locator('#tutorialBtn').click();
+  await expect(page.locator('#tutorial')).toBeVisible();
+  await expect(page.locator('#menu')).toBeHidden();
+  await page.locator('#tutorialSkip').click();
+  await expect(page.locator('#menu')).toBeVisible();
 });

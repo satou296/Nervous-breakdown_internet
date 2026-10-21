@@ -74,6 +74,7 @@ import { PauseController } from './app/PauseController.js';
 import { CardSelectionFactory } from './app/selection/CardSelectionMethods.js';
 import { ContactFeedback } from './app/ContactFeedback.js';
 import { TutorialGuide } from './app/tutorial/TutorialGuide.js';
+import { TutorialRecord } from './app/tutorial/TutorialRecord.js';
 import { waitForFont } from './app/fontLoader.js';
 
 import { ServerMessage } from './net/Protocol.js';
@@ -172,7 +173,7 @@ async function main() {
   const hud = new Hud({ root: $('hud'), turnEl: $('turn'), scoresEl: $('scores'), helpEl: $('help') });
   const toast = new Toast($('toast'), { durationMs: TIMING.toastMs });
   const menu = new MenuScreen({
-    root: $('menu'), startButton: $('startBtn'),
+    root: $('menu'), startButton: $('startBtn'), tutorialButton: $('tutorialBtn'),
     defaults: { modeId: 'solo', difficultyId: DEFAULT_DIFFICULTY_ID, deckSize: 32 }
   });
   const result = new ResultScreen({
@@ -246,6 +247,7 @@ async function main() {
       skipButton: $('tutorialSkip'), finishButton: $('tutorialFinish')
     }),
     tutorialGuide: new TutorialGuide(),
+    tutorialRecord: new TutorialRecord(),
     createTutorialSession: () => new LocalGameSession({
       mode: getGameMode('tutorial'),
       difficulty: TUTORIAL_DIFFICULTY,
