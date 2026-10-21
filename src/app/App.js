@@ -5,6 +5,7 @@ import { PauseButtonEvent } from '../ui/PauseButton.js';
 import { SessionEvent } from './session/SessionEvent.js';
 import { PointerInputEvent } from '../input/PointerInput.js';
 import { KeyboardInputEvent } from '../input/KeyboardInput.js';
+import { ReachPadEvent } from '../ui/ReachPad.js';
 import { LobbyEvent } from '../online/OnlineLobby.js';
 import { TutorialScreenEvent } from '../ui/TutorialScreen.js';
 import { TutorialGuideEvent, TUTORIAL_STEP_COUNT, TutorialStep, tutorialStepNumber } from './tutorial/TutorialGuide.js';
@@ -25,13 +26,13 @@ export class App {
   #inTutorial = false;
 
   constructor({
-    menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, rig, pointingHand,
+    menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, reachPad, rig, pointingHand,
     attract, createLocalSession, createOnlineSession, lobby, roomLink, resultFormatter, toast, strings,
     tutorialScreen, tutorialGuide, createTutorialSession, tutorialRecord,
     documentRef = document
   }) {
     Object.assign(this, {
-      menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, rig, pointingHand,
+      menu, result, loading, pauseScreen, pauseButton, pause, pointer, keyboard, reachPad, rig, pointingHand,
       attract, createLocalSession, createOnlineSession, lobby, roomLink, resultFormatter, toast, strings,
       tutorialScreen, tutorialGuide, createTutorialSession, tutorialRecord,
       documentRef
@@ -91,12 +92,16 @@ export class App {
 
   /* ---------------- 配線 ---------------- */
 
+  #tap(ndc) {
+    if (!this.isPlaying()) return;
+    this.pointingHand.poke();
+    this.#session.handleTap(ndc);
+  }
+
   #wireInput() {
-    this.pointer.on(PointerInputEvent.Tap, ndc => {
-      if (!this.isPlaying()) return;
-      this.pointingHand.poke();
-      this.#session.handleTap(ndc);
-    });
+    this.pointer.on(PointerInputEvent.Tap, ndc => this.#tap(ndc));
+    // 「めくる」ボタン：画面をタップしたのと同じ。狙いはいまの位置のまま
+    this.reachPad.on(ReachPadEvent.Flip, () => this.#tap(this.pointer.ndc));
     this.pointer.on(PointerInputEvent.Drag, ({ dx, dy }) => {
       if (this.isPlaying() || this.menu.isOpen) this.rig.lookByPixels(dx, dy);
     });

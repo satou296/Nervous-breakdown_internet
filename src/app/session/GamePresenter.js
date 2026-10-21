@@ -20,15 +20,20 @@ export class GamePresenter {
 
   /** カードを配り、HUD を出す。seed を同じにすると全員の画面で同じ配置・動きになる */
   setUp(cards, { seed } = {}) {
-    const { field, pileFactory, hud, reachMeter } = this.s;
+    const { field, pileFactory, hud, reachMeter, reachPad } = this.s;
     this.#cardsById = new Map(cards.map(c => [c.id, c]));
     // pileSlot は置き場の並び順（オンラインでは自分以外の人を左から順に並べる）
     this.#piles = this.mode.seats.map((seat, i) => pileFactory.create(seat.pile, seat.pileSlot ?? i));
     const realCards = this.mode.realCards ?? false;
     field.populate(cards, this.difficulty, seed === undefined ? { realCards } : { seed, realCards });
-    hud.setHelp(this.usesReach ? TEXT.help.reach : TEXT.help.point);
+    const touch = reachPad.enabled;
+    if (this.usesReach) hud.setHelp(touch ? TEXT.help.reachTouch : TEXT.help.reach);
+    else hud.setHelp(touch ? TEXT.help.pointTouch : TEXT.help.point);
     hud.show();
-    if (this.usesReach) reachMeter.show();
+    if (this.usesReach) {
+      reachMeter.show();
+      reachPad.show();
+    }
   }
 
   cardById(id) {
@@ -100,5 +105,6 @@ export class GamePresenter {
     this.s.field.clear();
     this.s.hud.hide();
     this.s.reachMeter.hide();
+    this.s.reachPad.hide();
   }
 }

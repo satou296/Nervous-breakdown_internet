@@ -62,6 +62,7 @@ import { LoadingScreen } from './ui/LoadingScreen.js';
 import { PauseScreen } from './ui/PauseScreen.js';
 import { PauseButton } from './ui/PauseButton.js';
 import { ReachMeter } from './ui/ReachMeter.js';
+import { ReachPad } from './ui/ReachPad.js';
 import { ContactIndicator } from './ui/ContactIndicator.js';
 import { TutorialScreen } from './ui/TutorialScreen.js';
 
@@ -186,6 +187,11 @@ async function main() {
   const pauseScreen = new PauseScreen({ root: $('pause'), resumeButton: $('resumeBtn'), quitButton: $('quitBtn'), noteEl: $('pauseNote') });
   const pauseButton = new PauseButton($('pauseBtn'));
   const reachMeter = new ReachMeter({ root: $('reachMeter'), fill: $('reachFill') });
+  // 達人・極の操作ボタンは、タッチが主な端末（マウスで指せない）だけで出す
+  const reachPad = new ReachPad({
+    root: $('reachPad'), extendButton: $('reachExtend'), retractButton: $('reachRetract'), flipButton: $('reachFlip'),
+    enabled: window.matchMedia?.('(hover: none) and (pointer: coarse)').matches ?? false
+  });
 
   /* ---- 達人モード：手のひらの接触（app は後で作るので、判定は関数で遅延参照する） ---- */
   let app = null;
@@ -225,10 +231,10 @@ async function main() {
   const sessionServices = {
     deckFactory, deckOptions: DECK_OPTIONS, matchRule, field, picker, choreographer,
     pileFactory, hud, toast, timing: TIMING, cpuConfig: CPU, clock: gameClock,
-    reachMeter, selectionFactory: new CardSelectionFactory({ picker, contactSensor })
+    reachMeter, reachPad, selectionFactory: new CardSelectionFactory({ picker, contactSensor })
   };
   app = new App({
-    menu, result, toast, strings: TEXT, pointer, keyboard, rig, pointingHand,
+    menu, result, toast, strings: TEXT, pointer, keyboard, reachPad, rig, pointingHand,
     pauseScreen, pauseButton, pause, lobby, roomLink,
     loading: new LoadingScreen($('loading')),
     resultFormatter: new ResultFormatter(),
@@ -259,7 +265,7 @@ async function main() {
    * gameplay の中身はゲーム内時計で動くのでポーズで止まる。
    * 視点・手・描画は止めない（ポーズ画面の背景も描き続ける）。 */
   const gameplay = new PausableTimeline(gameClock)
-    .add(new ReachController({ keyboard, reach: armReach, meter: reachMeter, isEnabled: () => app.canReach() }))
+    .add(new ReachController({ inputs: [keyboard, reachPad], reach: armReach, meter: reachMeter, isEnabled: () => app.canReach() }))
     .add(contactSensor)
     .add(new PalmHold({ sensor: contactSensor, isEnabled: () => app.canHoldTouched() }))
     .add(new ArmCollisionResolver({

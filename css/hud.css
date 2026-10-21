@@ -63,6 +63,23 @@
 .reach-fill { display: block; height: 100%; width: 0; background: var(--brass); }
 @media (max-width: 440px) { .reach-keys { display: none; } }
 
+/* 達人・極のタッチ用ボタン（左手で腕の伸び縮み、右手でめくる。中央下部はめくったカードの置き場なので空ける） */
+.reach-pad {
+  position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  display: flex; justify-content: space-between; align-items: flex-end; padding: 0 16px;
+  pointer-events: none;
+}
+.reach-pad-arm { display: flex; flex-direction: column; gap: 10px; }
+.pad-btn {
+  pointer-events: auto; width: 68px; height: 68px; border-radius: 50%;
+  background: var(--panel); border: 1px solid var(--brass-line); color: var(--ink);
+  font: 700 .82rem var(--ui); letter-spacing: .06em;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.pad-btn:active { border-color: var(--brass); background: rgba(216, 180, 106, .22); }
+.pad-flip { width: 78px; height: 78px; border-color: var(--brass); color: var(--brass); }
+
 /* 達人モード：手のひらがカードに触れている表示（表のカードを並べる画面下部のすぐ上） */
 .contact-hint {
   position: fixed; left: 50%; transform: translateX(-50%);

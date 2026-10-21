@@ -25,6 +25,7 @@ export function loadServerConfig(env = process.env) {
     allowedOrigins: (env.ALLOWED_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean),
     turnTimeoutMs: number(env.TURN_TIMEOUT_SEC, 45) * 1000,
     disconnectGraceMs: 8000,          // 手番の人が切断したら、これだけ待って次の人へ
+    lobbySeatGraceMs: 30000,          // 待合室で切断した人の席を空けるまで（画面の自動再接続は約23秒であきらめる）
     emptyRoomTtlMs: 10 * 60 * 1000,   // 誰もいなくなった部屋を消すまでの時間
     maxRooms: number(env.MAX_ROOMS, 300),
     heartbeatMs: 25000,               // 応答のない接続を切る間隔
