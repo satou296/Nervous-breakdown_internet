@@ -84,7 +84,8 @@ Render の **Logs** 画面に、次のような行が出ます。
 | `ws_connected` / `ws_closed` | 画面がつながった／切れた | その時点の接続数 |
 | `room_created` / `room_closed` | 部屋ができた／空の部屋を片付けた | 難易度・枚数・部屋数 |
 | `match_started` / `match_finished` | 試合の開始／終了 | 難易度・枚数・人数・かかった秒数 |
-| `dispatch_error` / `http_error` | サーバーでエラーが起きた（`level` は `error`） | エラーの内容と発生場所 |
+| `dispatch_error` / `http_error` / `connection_error` | サーバーでエラーが起きた（`level` は `error`。`connection_error` はその接続だけを切る） | エラーの内容と発生場所 |
+| `uncaught_exception` | 思わぬ例外でサーバーが止まる直前（`level` は `error`。Render が起動し直す） | エラーの内容と発生場所 |
 
 プレイヤーの名前は記録しません。
 

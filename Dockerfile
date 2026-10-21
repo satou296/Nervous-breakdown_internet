@@ -8,8 +8,9 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 # 先に依存パッケージだけを入れる（ソースだけ変えたときに、ここを再利用できる）
-COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
+# package-lock.json の版どおりに入れる（毎回同じ中身になるように）
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev \
  && npm cache clean --force
 
 # 配信する画面とサーバーのコード

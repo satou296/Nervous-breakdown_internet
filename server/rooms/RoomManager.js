@@ -73,7 +73,10 @@ export class RoomManager {
     this.#rooms.clear();
   }
 
-  /** 全員いなくなったら一定時間後に部屋を消す。誰か戻れば取りやめる */
+  /**
+   * 全員いなくなったら一定時間後に部屋を消す。誰か戻れば取りやめる。
+   * 戻れる人もいない部屋はすぐ消す（部屋を作っては抜けるのを繰り返して、上限まで埋められないように）
+   */
   #watchVacancy(room) {
     const pending = this.#cleanupTimers.get(room.code);
     if (!room.isVacant) {
@@ -81,15 +84,25 @@ export class RoomManager {
       this.#cleanupTimers.delete(room.code);
       return;
     }
+    if (room.isAbandoned) {
+      if (pending) clearTimeout(pending);
+      this.#close(room);
+      return;
+    }
     if (pending) return;
     const timer = setTimeout(() => {
-      this.#cleanupTimers.delete(room.code);
-      if (!room.isVacant) return;
-      room.dispose();
-      this.#rooms.delete(room.code);
-      this.onRoomClosed(room);
+      if (room.isVacant) this.#close(room);
+      else this.#cleanupTimers.delete(room.code);
     }, this.emptyRoomTtlMs);
     timer.unref?.();
     this.#cleanupTimers.set(room.code, timer);
+  }
+
+  #close(room) {
+    this.#cleanupTimers.delete(room.code);
+    if (this.#rooms.get(room.code) !== room) return;
+    room.dispose();
+    this.#rooms.delete(room.code);
+    this.onRoomClosed(room);
   }
 }
