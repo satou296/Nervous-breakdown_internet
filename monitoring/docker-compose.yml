@@ -1,7 +1,7 @@
 # 監視用のコンテナ（Zabbix と Grafana）。ゲーム本体の docker-compose.yml とは別に、自分のパソコンで動かす。
 #   準備： cp .env.example .env を実行し、.env の中身を書き換える
 #   起動： docker compose up -d        （このフォルダ monitoring/ で実行する）
-#   画面： Zabbix  → http://localhost:8081   Grafana → http://localhost:3000
+#   画面： Zabbix  → http://localhost:8090   Grafana → http://localhost:3000
 #          （Zabbix の番号は .env の ZABBIX_WEB_PORT で変えられる）
 #   停止： docker compose down         （集めた数値は残る。消すときは docker compose down -v）
 # 手順は docs/MONITORING_DOCKER.md を参照。
@@ -48,7 +48,7 @@ services:
       POSTGRES_DB: zabbix
       PHP_TZ: ${TZ:-Asia/Tokyo}
     ports:
-      - "127.0.0.1:${ZABBIX_WEB_PORT:-8081}:8080"
+      - "127.0.0.1:${ZABBIX_WEB_PORT:-8090}:8080"
     depends_on:
       zabbix-db:
         condition: service_healthy
