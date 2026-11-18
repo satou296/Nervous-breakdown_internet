@@ -28,7 +28,7 @@ export function loadServerConfig(env = process.env) {
     return value !== undefined && value !== '' && Number.isInteger(n) && n >= 0 ? n : fallback;
   };
   return Object.freeze({
-    port: number(env.PORT, 8080),
+    port: number(env.PORT, 18080),
     host: '0.0.0.0',
     publicRoot: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
     allowedOrigins: (env.ALLOWED_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean),

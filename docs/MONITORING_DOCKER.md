@@ -14,8 +14,8 @@ Render（ゲームサーバー）
   │  記録を送る（5秒ごと）               数値を読みに行く（1分ごと）
   ▼                                        ▲
 Grafana Cloud の Loki                  自分のパソコン（Docker）
-  ▲                                     ├─ Zabbix   http://localhost:8090
-  │  記録を読みに行く                   └─ Grafana  http://localhost:3000
+  ▲                                     ├─ Zabbix   http://localhost:18090
+  │  記録を読みに行く                   └─ Grafana  http://localhost:13000
   └────────────────────────────────────────┘
 ```
 
@@ -28,8 +28,8 @@ Grafana Cloud の Loki                  自分のパソコン（Docker）
 | 3 | 環境変数を4つ設定する | Render |
 | 4 | 設定ファイル（`.env`）を作る | パソコン |
 | 5 | 監視用のコンテナを起動する | パソコン |
-| 6 | Zabbix を設定する（テンプレートの取り込み） | http://localhost:8090 |
-| 7 | Grafana で見る | http://localhost:3000 |
+| 6 | Zabbix を設定する（テンプレートの取り込み） | http://localhost:18090 |
+| 7 | Grafana で見る | http://localhost:13000 |
 
 扱う合言葉は次の3種類です。**どれも GitHub に上げません。**
 
@@ -123,7 +123,8 @@ Grafana Cloud の Loki                  自分のパソコン（Docker）
    | `LOKI_URL` | 手順2の URL **そのまま**（こちらは `/loki/api/v1/push` を**付けない**） |
    | `LOKI_USER` | 手順2の番号 |
    | `LOKI_READ_TOKEN` | 手順2の **読み取り用** トークン |
-   | `ZABBIX_WEB_PORT` | **ふつうはそのまま**（`8090`）。ほかのアプリが 8090 を使っているときだけ、空いている番号に変える（このあとの `localhost:8090` もその番号で開く） |
+   | `ZABBIX_WEB_PORT` | **ふつうはそのまま**（`18090`）。ほかのアプリが 18090 を使っているときだけ、空いている番号に変える（このあとの `localhost:18090` もその番号で開く） |
+   | `GRAFANA_PORT` | **ふつうはそのまま**（`13000`）。考え方は `ZABBIX_WEB_PORT` と同じ（`localhost:13000` の番号が変わる） |
 
 `.env` は `.gitignore` に入っているので、GitHub には上がりません。
 
@@ -151,7 +152,7 @@ docker compose up -d
 
 ### 6-1. 入ってパスワードを変える
 
-1. http://localhost:8090 を開き、Username `Admin`、Password `zabbix` で入ります（`Admin` の A は大文字）。
+1. http://localhost:18090 を開き、Username `Admin`、Password `zabbix` で入ります（`Admin` の A は大文字）。
 2. 左下の **User settings → Profile → Change password** で、パスワードを変えます。
 3. `.env` の `ZABBIX_API_PASSWORD` を、新しいパスワードと同じ値に書き換えます。
 4. ターミナルで次を実行します（Grafana に新しいパスワードを伝えるため）。
@@ -211,7 +212,7 @@ Zabbix には最初から `Zabbix server` というホストが入っていて�
 
 ## 7. Grafana で見る
 
-1. http://localhost:3000 を開き、Username `admin`、Password に `.env` の `GRAFANA_ADMIN_PASSWORD` を入れます。
+1. http://localhost:13000 を開き、Username `admin`、Password に `.env` の `GRAFANA_ADMIN_PASSWORD` を入れます。
 2. 左のメニューの **Dashboards** → **浮遊トランプ神経衰弱：サーバーの様子** を開きます。
 
 データの元（Loki と Zabbix）とダッシュボードは、起動時に自動で登録されています。
@@ -249,8 +250,8 @@ Zabbix には最初から `Zabbix server` というホストが入っていて�
 | 症状 | 原因と対処 |
 |---|---|
 | `docker compose up -d` で「.env に … を設定してください」と出る | `.env` がないか、その項目が空です。手順4を確認 |
-| http://localhost:8090 が開かない、エラーが出る | 起動直後は準備中です。1〜2分待って再読み込み。直らなければ `docker compose logs --tail 50 zabbix-server` |
-| ポートが使われている（`port is already allocated`） | 8090 か 3000 をほかのアプリが使っています。8090 なら `.env` の `ZABBIX_WEB_PORT` を別の番号（例：8091）に変えて `docker compose up -d` を実行し直す。3000 なら `docker-compose.yml` の `"127.0.0.1:3000:3000"` の **左側の番号**を変える |
+| http://localhost:18090 が開かない、エラーが出る | 起動直後は準備中です。1〜2分待って再読み込み。直らなければ `docker compose logs --tail 50 zabbix-server` |
+| ポートが使われている（`port is already allocated`） | 18090 か 13000 をほかのアプリが使っています。`.env` の `ZABBIX_WEB_PORT`（18090）か `GRAFANA_PORT`（13000）を別の番号（例：18091・13001）に変えて `docker compose up -d` を実行し直す |
 | Zabbix の項目が `unauthorized` を返す | マクロ `{$GAME_STATS_TOKEN}` の値が、Render の `STATS_TOKEN` と違います |
 | Zabbix の項目が `not_found` を返す | Render に `STATS_TOKEN` が設定されていないか、新しいコードがまだ反映されていません |
 | Grafana の Zabbix のパネルが「No data」やエラー | ホスト名が `nervous-breakdown-internet` になっているか確認。Zabbix のパスワードを変えたあと、`.env` の `ZABBIX_API_PASSWORD` を直して `docker compose up -d` を実行したか確認 |
