@@ -1,15 +1,15 @@
 # 手元で本番と同じコンテナを動かすための設定
 #   起動： docker compose up --build
-#   確認： http://localhost:8080 を2つのブラウザ（片方はシークレットウィンドウ）で開く
+#   確認： http://localhost:18080 を2つのブラウザ（片方はシークレットウィンドウ）で開く
 #   停止： docker compose down
 services:
   game:
     build: .
     image: nervous-breakdown_internet:local
     ports:
-      - "8080:8080"
+      - "18080:18080"
     environment:
-      PORT: "8080"
+      PORT: "18080"
       TURN_TIMEOUT_SEC: "45"
     # 落ちても自動で起動し直す
     restart: unless-stopped

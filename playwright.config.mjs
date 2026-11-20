@@ -2,7 +2,7 @@
 // サーバーを本番と同じ node server/index.js で起動し、ヘッドレスの Chromium で画面を操作する。
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 8790;
+const PORT = 18790;
 
 export default defineConfig({
   testDir: './e2e',

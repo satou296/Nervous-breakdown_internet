@@ -11,13 +11,13 @@ Node.js 20 以上が必要です。サーバーがゲーム画面の配信と対
 ```bash
 cd Nervous-breakdown_internet
 npm install
-npm start          # → http://localhost:8080
+npm start          # → http://localhost:18080
 ```
 
 Docker の場合（本番の Render と同じコンテナ）：
 
 ```bash
-docker compose up --build    # → http://localhost:8080
+docker compose up --build    # → http://localhost:18080
 ```
 
 2つのブラウザ（片方はシークレットウィンドウ）で開き、片方で「オンライン」→「部屋を作る」、
@@ -28,7 +28,7 @@ docker compose up --build    # → http://localhost:8080
 GitHub Pages など、ファイルを置くだけの場所でも動きます。その場合オンライン対戦は選べません。
 
 ```bash
-python3 -m http.server 8000      # → http://localhost:8000
+python3 -m http.server 18000     # → http://localhost:18000
 ```
 
 初めて開いたときは、まずチュートリアル（6枚で神経衰弱の流れを体験）が始まります。「スキップ」でいつもの最初の画面へ進めます。2回目以降と招待URLではチュートリアルを飛ばし、スタート画面の「遊び方を見る」からいつでも見直せます。

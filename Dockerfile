@@ -22,9 +22,9 @@ COPY server ./server
 # root ではない利用者で動かす（安全のため）
 USER node
 
-# Render は PORT を自動で設定する。手元では 8080
-ENV PORT=8080
-EXPOSE 8080
+# Render は PORT を自動で設定する。手元では 18080
+ENV PORT=18080
+EXPOSE 18080
 
 # コンテナの死活確認（/health が 200 を返すか）
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

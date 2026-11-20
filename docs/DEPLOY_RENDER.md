@@ -61,15 +61,15 @@ GitHub や Render の画面のボタン名は、変更されて少し違うこ�
    npm test
    ```
 
-5. サーバーを起動します。`浮遊トランプ神経衰弱サーバー: http://localhost:8080` と表示されます。
+5. サーバーを起動します。`浮遊トランプ神経衰弱サーバー: http://localhost:18080` と表示されます。
 
    ```
    npm start
    ```
 
-6. ブラウザで http://localhost:8080 を開きます。
+6. ブラウザで http://localhost:18080 を開きます。
 7. 「あそびかた」で **オンライン** を選んで「ゲーム開始」→ 名前を入れて「部屋を作る」。
-8. 表示された招待URL（`http://localhost:8080/room/XXXXX`）を、**シークレットウィンドウ**（Chrome は Ctrl+Shift+N、Mac は Cmd+Shift+N）で開き、別の名前で参加します。
+8. 表示された招待URL（`http://localhost:18080/room/XXXXX`）を、**シークレットウィンドウ**（Chrome は Ctrl+Shift+N、Mac は Cmd+Shift+N）で開き、別の名前で参加します。
 9. 最初のウィンドウで「対戦を始める」を押し、交互にカードをめくれれば成功です。
 10. 終わったら、ターミナルで Ctrl+C を押してサーバーを止めます。
 
@@ -252,7 +252,7 @@ main に push（マージ）しても、本番には**自動では反映され�
 入れ替えの瞬間に進行中の部屋がなくなるため、反映する時を自分で選べるようにしています。
 
 1. 変更は作業ブランチで行い、GitHub Actions の `unit` と `e2e` が両方通ってから main にマージします。
-2. 本番と同じコンテナで動作を確かめます：`docker compose up --build` → http://localhost:8080 を2つのブラウザ（片方はシークレットウィンドウ）で開き、オンライン対戦まで試す → `docker compose down`。
+2. 本番と同じコンテナで動作を確かめます：`docker compose up --build` → http://localhost:18080 を2つのブラウザ（片方はシークレットウィンドウ）で開き、オンライン対戦まで試す → `docker compose down`。
 3. 遊んでいる人がいない時間に、Render のサービス画面右上の **Manual Deploy → Deploy latest commit** を押します。
 4. Logs に `server_started` が出て、公開 URL の `/health` が `{"status":"ok",...}` を返せば完了です。
 

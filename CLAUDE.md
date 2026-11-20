@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm install
-npm start                      # サーバー起動 → http://localhost:8080（画面の配信＋/ws）
+npm start                      # サーバー起動 → http://localhost:18080（画面の配信＋/ws）
 npm run dev                    # node --watch で起動（サーバー側の変更で自動再起動）
 npm test                       # node --test tests/*.mjs（ブラウザ不要）
 node --test tests/domain.test.mjs                       # 1ファイルだけ
@@ -23,10 +23,10 @@ node --test --test-name-pattern="ペア" tests/*.mjs       # テスト名で絞�
 npx playwright install chromium   # 初回だけ（E2E 用のブラウザ）
 npm run test:e2e               # 実際のブラウザでゲームを動かす確認（サーバーも自動で起動。e2e/）
 docker compose up --build      # 本番（Render）と同じコンテナ
-python3 -m http.server 8000    # 画面だけ（オンライン対戦なしの静的配信）
+python3 -m http.server 18000   # 画面だけ（オンライン対戦なしの静的配信）
 ```
 
-サーバーの環境変数は `server/config/ServerConfig.js`（`PORT` / `ALLOWED_ORIGINS` / `TURN_TIMEOUT_SEC` / `MAX_ROOMS`、接続数と回数の上限に `MAX_CONNECTIONS` / `MAX_CONNECTIONS_PER_IP` / `TRUST_PROXY_HOPS`、監視用に `LOG_LEVEL` / `STATS_TOKEN` / `LOKI_URL` / `LOKI_USER` / `LOKI_TOKEN`）。本番は Render の無料プラン・1台で、main にマージしても自動では反映しない（`render.yaml` の `autoDeployTrigger: off`。反映は Render の画面の Manual Deploy で、遊んでいる人がいない時間に行う）。マージ前の確認は `npm test`・`npm run test:e2e` に加えて、`docker compose up --build` の本番と同じコンテナでも行う。本番公開の手順は `docs/DEPLOY_RENDER.md`、監視の手順は `docs/MONITORING.md` と `docs/MONITORING_DOCKER.md`。
+サーバーの環境変数は `server/config/ServerConfig.js`（`PORT` / `ALLOWED_ORIGINS` / `TURN_TIMEOUT_SEC` / `MAX_ROOMS`、接続数と回数の上限に `MAX_CONNECTIONS` / `MAX_CONNECTIONS_PER_IP` / `TRUST_PROXY_HOPS`、監視用に `LOG_LEVEL` / `STATS_TOKEN` / `LOKI_URL` / `LOKI_USER` / `LOKI_TOKEN`）。本番は Render の無料プラン・1台で、main にマージしても自動では反映しない（`render.yaml` の `autoDeployTrigger: off`。反映は Render の画面の Manual Deploy で、遊んでいる人がいない時間に行う）。マージ前の確認は `npm test`・`npm run test:e2e` に加えて、`docker compose up --build` の本番と同じコンテナでも行う。手元で開く番号は、ほかのプロジェクトでよく使われる番号（3000・8000・8080〜8091 など）と重ならないよう、すべて 1 万台にしている（ゲーム 18080・画面だけ 18000・E2E 18790・監視の Zabbix 18090／Grafana 13000）。番号を足すときもこの範囲から選ぶ（本番は Render が `PORT` を決めるので関係しない）。本番公開の手順は `docs/DEPLOY_RENDER.md`、監視の手順は `docs/MONITORING.md` と `docs/MONITORING_DOCKER.md`。
 
 ## アーキテクチャ
 
